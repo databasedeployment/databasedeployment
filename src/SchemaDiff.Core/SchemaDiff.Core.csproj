@@ -4,4 +4,8 @@
     <RootNamespace>SchemaDiff.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SchemaDiff.Core.Tests" />
+  </ItemGroup>
+
 </Project>
