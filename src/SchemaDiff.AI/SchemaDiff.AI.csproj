@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SchemaDiff.AI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SchemaDiff.Core\SchemaDiff.Core.csproj" />
+  </ItemGroup>
+
+</Project>

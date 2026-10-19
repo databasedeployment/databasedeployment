@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>schemadiff</AssemblyName>
+    <RootNamespace>SchemaDiff.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SchemaDiff.Core\SchemaDiff.Core.csproj" />
+  </ItemGroup>
+
+</Project>
