@@ -68,4 +68,17 @@ public class ObjectKeyTests
         Assert.Equal("SCHEMA [sales]", new ObjectKey("", "sales", ObjectKind.Schema).ToString());
         Assert.Equal("Table [dbo].[Customer]", new ObjectKey("dbo", "Customer", ObjectKind.Table).ToString());
     }
+
+    [Fact]
+    public void Keys_from_the_factory_work_as_dictionary_keys_regardless_of_case()
+    {
+        var map = new Dictionary<ObjectKey, int>(ObjectKeyComparer.CaseInsensitive)
+        {
+            [TestFactory.Table("Customer")] = 1,
+            [TestFactory.View("Customer")] = 2,
+        };
+
+        Assert.Equal(1, map[TestFactory.Table("CUSTOMER", "DBO")]);
+        Assert.Equal(2, map[TestFactory.View("customer")]);
+    }
 }
