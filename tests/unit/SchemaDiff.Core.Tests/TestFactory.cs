@@ -75,4 +75,32 @@ internal static class TestFactory
         bool defaultIsSystemNamed = false) =>
         new(name, "sys", typeName, maxLength, precision, scale, nullable, collation, identity, computed,
             defaultDefinition, defaultName, defaultIsSystemNamed);
+
+    public static DatabaseSnapshot Database(
+        string database,
+        IEnumerable<ObjectSnapshot> objects,
+        Dictionary<ObjectKey, List<ObjectKey>>? references = null,
+        string server = "TESTSRV",
+        bool ignoredColumnOrder = false,
+        bool ignoredCollation = false,
+        bool caseSensitive = false,
+        bool caseSensitiveColumns = false)
+    {
+        // Like the real builder, matching is always case-insensitive. caseSensitive only decides
+        // whether a difference in name casing is reported (CaseSensitiveNames).
+        var dict = new Dictionary<ObjectKey, ObjectSnapshot>(ObjectKeyComparer.CaseInsensitive);
+        foreach (var o in objects) dict[o.Key] = o;
+
+        return new DatabaseSnapshot
+        {
+            Server = server,
+            Database = database,
+            Objects = dict,
+            References = references ?? [],
+            IgnoredColumnOrder = ignoredColumnOrder,
+            IgnoredCollation = ignoredCollation,
+            CaseSensitiveNames = caseSensitive,
+            CaseSensitiveColumnNames = caseSensitiveColumns,
+        };
+    }
 }
