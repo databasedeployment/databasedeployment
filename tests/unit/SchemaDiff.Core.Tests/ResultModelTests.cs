@@ -57,6 +57,21 @@ public class ResultModelTests
     }
 
     [Fact]
+    public void Block_is_conditional_only_when_every_blocking_finding_depends_on_data()
+    {
+        var conditional = new TableRisk(Table("Orders"), DeploymentRisk.BlockedIfNotEmpty, 10,
+            [new RiskFinding("Email", DeploymentRisk.BlockedIfNotEmpty, "adds a UNIQUE constraint", Conditional: true)]);
+        var certain = conditional with
+        {
+            Findings = [.. conditional.Findings, new RiskFinding("Note", DeploymentRisk.DataLoss, "drops a column")],
+            Risk = DeploymentRisk.DataLoss,
+        };
+
+        Assert.True(conditional.ConditionalOnly);
+        Assert.False(certain.ConditionalOnly);
+    }
+
+    [Fact]
     public void Extraction_report_keeps_failed_queries_apart_from_warnings()
     {
         var report = new ExtractionReport();
