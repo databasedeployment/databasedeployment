@@ -46,6 +46,10 @@ dotnet test
 
 ## Repository Layout
 
+- `src/SchemaDiff.Core` – connection, extraction, normalization, comparison, script generation, risk, migrations
+- `src/SchemaDiff.Cli` – command-line application (jobs, reports, exit codes)
+- `src/SchemaDiff.Web` – local web interface (Minimal API + SSE, bound to 127.0.0.1)
+- `src/SchemaDiff.AI` – optional AI assistant (Microsoft.Extensions.AI)
 - `docs/` – course deliverables (`Charter.md`, `ProjectPlan.md`, `RequirementsSpec.md`, `RequirementsAnalysis.md`, `DesignSpec.md`, `TestSpec.md`)
 - `tests/` – all tests, grouped by kind (`unit/`, `integration/`, `e2e/`, `performance/`, …)
 
