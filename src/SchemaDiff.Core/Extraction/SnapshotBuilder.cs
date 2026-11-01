@@ -91,8 +91,8 @@ internal static class SnapshotBuilder
         foreach (var o in catalog.Objects)
             keyById[o.ObjectId] = new ObjectKey(o.SchemaName, o.Name, ObjectKindMap.FromSysType(o.Type));
 
-        // (objectId, columnId) to the raw column name. The structural definitions used for
-        // scripting read it so columns keep their real casing in generated SQL.
+        // (objectId, columnId) to the raw column name. The display script (scriptSources.ColumnNames)
+        // and the structural definitions read it so columns keep their real casing in generated SQL.
         var columnNames = new Dictionary<long, string>(catalog.Columns.Count);
         foreach (var c in catalog.Columns) columnNames[Pair(c.ObjectId, c.ColumnId)] = c.Name;
 
@@ -196,6 +196,24 @@ internal static class SnapshotBuilder
             progress?.BuildItemCompleted();
         });
 
+        var scriptSources = new Scripting.TableScriptSources
+        {
+            ColumnsBy = columnsBy,
+            IndexesBy = indexesBy,
+            IndexColumnsBy = indexColumnsBy,
+            KeyConstraintByIndex = keyConstraintByIndex,
+            ChecksBy = checksBy,
+            ForeignKeysBy = foreignKeysBy,
+            FkColumnsBy = fkColumnsBy,
+            ColumnNames = columnNames,
+            KeyById = keyById,
+            TablePlacement = tablePlacement,
+            IndexPlacement = indexPlacement,
+            TemporalBy = temporalById,
+            XmlCollections = xmlCollections,
+            IndexExtrasBy = indexExtrasBy,
+        };
+
         // Matching is always case-insensitive. [GetCustomer] and [getcustomer] are two spellings of
         // the same object, not two objects. The case-sensitive names option only decides whether
         // such a casing difference is reported (see SchemaComparer). When on it shows up as a single
@@ -230,6 +248,7 @@ internal static class SnapshotBuilder
                     snapshot.RowCount = rowCountsById.TryGetValue(obj.ObjectId, out var rows) ? rows : null;
                     if (options.KeepDisplayScripts)
                     {
+                        snapshot.DisplayScript = Scripting.TableScriptWriter.Write(key, obj.ObjectId, scriptSources, options);
                         snapshot.IndexDefinitions = BuildIndexDefinitions(
                             obj.ObjectId, indexesBy, indexColumnsBy, keyConstraintByIndex, columnNames,
                             indexExtrasBy, indexPlacement, options);
