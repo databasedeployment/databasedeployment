@@ -1,5 +1,7 @@
 # SchemaDiff
 
+[![CI](https://github.com/databasedeployment/databasedeployment/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/databasedeployment/databasedeployment/actions/workflows/ci.yml)
+
 SchemaDiff is a fast SQL Server schema comparison, deployment and migration tool. It answers *"what changed between two SQL Server databases?"* and turns the answer into a safe, ordered deployment script.
 
 Instead of building a full semantic model like DacFx / SSDT Schema Compare, SchemaDiff extracts the system catalog in bulk, normalizes T-SQL with ScriptDom and compares objects through XxHash128 hashes, aiming at seconds instead of minutes on databases with 10,000+ objects.

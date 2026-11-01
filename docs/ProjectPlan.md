@@ -12,7 +12,7 @@
 | **Product Owner** | İsmail Yeşilyurt (150220009) |
 | **Instructors** | Prof. Dr. Tolga Ovatman, Assoc. Prof. Dr. Ayşe Tosun |
 | **Submission date** | 2026-10-19 |
-| **Document version** | 1.0 |
+| **Document version** | 1.1 |
 
 ---
 
@@ -61,7 +61,7 @@
 
 **Assumptions and constraints.**
 
-- **Time:** development runs 10 weeks, from Monday 2026-10-19 to Friday 2026-12-25 (codebase deadline 25.12.2026 23:59); demo on 26.12 and presentation on 28.12. Course reports (Requirements Specification 02.11, Requirements Analysis 23.11, Design 07.12, Test 21.12) are produced in parallel and are not scheduled as WBS activities.
+- **Time:** development runs 10 weeks, from Monday 2026-10-19 to Friday 2026-12-25 (codebase deadline 25.12.2026 23:59); demo on 26.12 and presentation on 28.12. Course reports (Requirements Specification 08.11, Requirements Analysis 23.11, Design 07.12, Test 21.12) are produced in parallel and are not scheduled as WBS activities.
 - **Team:** six students with a baseline allocation of 0.5 FTE (≈20 h/week) each; up to 0.75 FTE in selected weeks from week 6 on, after the midterm (Mon 23 Nov, after 17:00). Each member has one technical and one management duty (Section 4.1).
 - **AI agents:** AI coding agents are used as team members under the course policy: their work, effort and the human review effort are reported, Gen-AI error types are logged, and no member or agent commits directly to main (Sections 3 and 4.3).
 - **Process:** test-first implementation, GitHub branches + pull requests, GitHub Actions CI and a GitHub Projects board for task tracking; customer (TA) meetings are minuted and needs confirmed before moving on.
@@ -316,7 +316,7 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 
 - All members are full-time students taking other courses; the baseline is 0.5 FTE (≈20 h/week). Week 1 is lighter (0.25 FTE for most members) because the Project Plan and requirements work run in parallel.
 - Peaks of 0.75 FTE are planned only in weeks 6–10 (from the midterm week on; the midterm is Monday 23 Nov after 17:00) and never for more than two consecutive weeks per person, except in the final stabilization week.
-- Course report deadlines (02.11, 23.11, 07.12, 21.12), customer meetings (26.10, 07.12, 21.12), peer scoring and weekly lectures take roughly 10% of each member's time; this is already excluded from the 0.5 FTE.
+- Course report deadlines (08.11, 23.11, 07.12, 21.12), customer meetings (26.10, 07.12, 21.12), peer scoring and weekly lectures take roughly 10% of each member's time; this is already excluded from the 0.5 FTE.
 - Windows-specific parts (DPAPI, LocalDB) need Windows machines; members on other platforms use SQL Server in Docker and rely on CI for Windows-only tests.
 - Backup owners for critical-path work: MTY backs up İY on script generation; ME backs up MG on the comparison engine; ÖFY backs up MTY on the risk analyzer.
 
@@ -393,7 +393,8 @@ A second, converging zero-float chain feeds WBS-6.4: `WBS-2.1 → WBS-3.1 → WB
 | Date | Milestone | Link to the plan |
 |---|---|---|
 | 26 Oct (W2) | Customer Meeting 2 on Requirements | Use cases confirmed with TAs before WBS-2.2/6.1 build on them |
-| 02 Nov (W3) | Requirements Specification; Peer Scoring 1 | — |
+| 02 Nov (W3) | Peer Scoring 1 | — |
+| 08 Nov (W3) | Requirements Specification | — |
 | 23 Nov (W6) | Requirements Analysis report; Midterm (after 17:00) | Peak allocations start only after the midterm |
 | 30 Nov (W7) | Peer Scoring 2 | — |
 | 07 Dec (W8) | Design Specification; Customer Meeting 3 on Design | Design matches the contracts frozen in WBS-2.1 |
@@ -453,3 +454,10 @@ Probability and impact are scored from 1 (lowest) to 5 (highest). The register i
 | R-12 | WBS-4.3, WBS-6.2, WBS-6.3 | Coverage matrix prioritizes common object kinds first; rare kinds may be "detected and reported" instead of scripted; optional scope kept separate. | İsmail Yeşilyurt (İY) | Ship rare kinds as report-only, documented in coverage matrix; defer optional scope. |
 
 The Project Manager reviews the register in the weekly meeting; scores are updated when a risk materialises or is retired, and any risk reaching a score of 15 or more is escalated to the whole team.
+
+## Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0 | 2026-10-19 | First submitted version. |
+| 1.1 | 2026-11-02 | Requirements Specification deadline corrected to 08.11.2026 as announced on Ninova. No change to scope, WBS, estimates or schedule. |

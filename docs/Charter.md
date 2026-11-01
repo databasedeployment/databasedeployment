@@ -15,7 +15,7 @@ SchemaDiff is a DacFx / SSDT "Schema Compare"-like tool that answers *"what chan
   - **İsmail Yeşilyurt (150220009):** Deployment Script Generation Developer — table/module/type/role/permission/extended-property/settings script generators, dependency ordering, rollback and bidirectional scripts
   - **Mustafa Talha Yıldırım (150220008):** Risk Analysis & Migration Developer — deployment risk analyzer, trigger status report, migration file generation and history, script execution engine
   - **Enes Birol Tatlı (150230713):** Web UI & AI Integration Developer — minimal API + SSE backend endpoints, single-page web interface, connection management, AI assistant
-- **GH Repo/Project URL:** https://github.com/smailyy13/databasedeployment
+- **GH Repo/Project URL:** https://github.com/databasedeployment/databasedeployment (project board: https://github.com/users/itu-itis23-elhan22/projects/1)
 
 ## 3. Project Scope
 
@@ -94,8 +94,8 @@ Database DevOps / release management for SQL Server-based enterprise systems (e.
 | Deliverable | Deadline |
 |---|---|
 | Project Charter | 11.10.2026 23:59 |
-| Project Plan | 19.10.2026 23:59 |
-| Requirement Specification Report | 02.11.2026 23:59 |
+| Project Plan | 25.10.2026 23:59 |
+| Requirement Specification Report | 08.11.2026 23:59 |
 | Requirement Analysis Report | 23.11.2026 23:59 |
 | Software Design Report | 07.12.2026 23:59 |
 | Software Test Report | 21.12.2026 23:59 |
