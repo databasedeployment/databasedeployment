@@ -94,8 +94,8 @@ Database DevOps / release management for SQL Server-based enterprise systems (e.
 | Deliverable | Deadline |
 |---|---|
 | Project Charter | 11.10.2026 23:59 |
-| Project Plan | 19.10.2026 23:59 |
-| Requirement Specification Report | 02.11.2026 23:59 |
+| Project Plan | 25.10.2026 23:59 |
+| Requirement Specification Report | 08.11.2026 23:59 |
 | Requirement Analysis Report | 23.11.2026 23:59 |
 | Software Design Report | 07.12.2026 23:59 |
 | Software Test Report | 21.12.2026 23:59 |
