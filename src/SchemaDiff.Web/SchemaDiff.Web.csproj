@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>SchemaDiff.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SchemaDiff.Core\SchemaDiff.Core.csproj" />
+    <ProjectReference Include="..\SchemaDiff.AI\SchemaDiff.AI.csproj" />
+  </ItemGroup>
+
+</Project>

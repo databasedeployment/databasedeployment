@@ -27,10 +27,10 @@ Instead of building a full semantic model like DacFx / SSDT Schema Compare, Sche
 Requirements: .NET 8 SDK and SQL Server 2016+ (or LocalDB).
 
 ```bash
-git clone https://github.com/smailyy13/databasedeployment
+git clone https://github.com/databasedeployment/databasedeployment
 cd databasedeployment
-dotnet build
-dotnet test
+dotnet build SchemaDiff.sln
+dotnet test SchemaDiff.sln
 ```
 
 ## Team – SegFault
@@ -46,6 +46,10 @@ dotnet test
 
 ## Repository Layout
 
+- `src/SchemaDiff.Core` – extraction, normalization, comparison, script generation and risk analysis
+- `src/SchemaDiff.Cli` – command-line application (jobs, reports, exit codes)
+- `src/SchemaDiff.Web` – local web interface (Minimal API + SSE, bound to 127.0.0.1)
+- `src/SchemaDiff.AI` – optional AI assistant
 - `docs/` – course deliverables (`Charter.md`, `ProjectPlan.md`, `RequirementsSpec.md`, `RequirementsAnalysis.md`, `DesignSpec.md`, `TestSpec.md`)
 - `tests/` – all tests, grouped by kind (`unit/`, `integration/`, `e2e/`, `performance/`, …)
 
