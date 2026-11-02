@@ -60,7 +60,13 @@ Project Plan.
 | FR-08 | T-02 | D-01 | The system shall detect missing VIEW DEFINITION permission and report the affected modules as uncertain, never as equal. | Must | A low privilege fixture login yields uncertain modules and a warning. No uncertain object is counted as equal. |
 | FR-09 | T-02 | D-01, D-04 | The system shall report extraction progress as the number of finished and total queries and normalized modules while a comparison runs. | Should | Progress tests check counters, phases that only move forward and percentage bands. |
 | FR-10 | T-02 | D-01, D-03 | The system shall provide a coverage probe that lists, for every object class, whether it can be read with the current permissions. | Should | Probe output on a low privilege login marks the unreadable classes. Probe queries are read-only. |
+| FR-11 | T-03 | D-01 | The system shall normalize module bodies on the T-SQL token stream with options to ignore whitespace, comments, semicolons, keyword casing and identifier quoting, and shall never change string literals. | Must | Golden file tests and an option matrix where each pair differs in one dimension only. |
+| FR-12 | T-03 | D-01 | The system shall compute an XxHash128 hash for every object and for each of its sub-parts (columns, indexes, constraints, foreign keys, body, permissions). | Must | Hash tests prove determinism and that changing one part only changes that part hash. |
+| FR-13 | T-03 | D-01, D-04 | The system shall apply the comparison options chosen by the user: ignore column order, collation, identity seed and increment, fill factor, padding, data compression, system named constraints, and case sensitive object and column names. | Must | Builder tests show that an ignored difference produces the same hash and a respected one does not. |
+| FR-14 | T-04 | D-01 | The system shall classify every object as added, removed, changed, equal or indeterminate by comparing source and target hashes. | Must | Comparing the dev and prod fixtures returns exactly the differences in tests/fixtures/expected.md. |
+| FR-15 | T-04 | D-01, D-04 | The system shall show the changed sub-parts of a changed object as a change tree (for example Add Column, Alter Column, Drop Index). | Must | Change tree tests for every sub-change kind on fixture pairs. |
 | FR-16 | T-04 | D-01 | The system shall compare every object kind listed in the charter scope, and shall report explicitly any kind it cannot script. | Must | Coverage matrix test: every object kind is either scripted or listed as report only. |
+| FR-17 | T-05 | D-01 | The system shall detect a removed and an added object with identical structure and report them as a rename candidate, without generating sp_rename. | Should | Rename tests on fixture pairs. No sp_rename appears in generated scripts for candidates. |
 | FR-41 | T-11 | D-01, D-03 | The system shall export a database snapshot to a compressed file with a version header. | Should | Round trip test: an imported snapshot equals the live extraction. |
 | FR-42 | T-11 | D-01, D-03, D-04 | The system shall compare a live database against a snapshot file without access to the database the snapshot came from. | Should | Comparing a fixture with its own snapshot reports no differences. |
 
@@ -114,7 +120,12 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-01 | WBS-2.2 | As a database developer, I want the schema of a large database read in seconds, so that comparing before every release is not a burden. | FR-06 |
 | SC-03 | WBS-2.3 | As a BI developer, I want extraction to run in parallel without overloading the server, so that comparing many layers at once stays safe. | FR-06, FR-09 |
 | SC-02 | WBS-2.4 | As a DBA, I want objects I cannot read to be reported as uncertain and a probe that shows what my login can read, so that missing permissions never look like equal objects. | FR-07, FR-08, FR-10 |
+| SC-01 | WBS-3.1 | As a database developer, I want formatting and comment changes to be ignored, so that only real changes appear in the result. | FR-11 |
+| SC-01 | WBS-3.2 | Technical activity: hashing of objects and sub-parts. It has no direct user story and makes the comparison of FR-14 fast and the change tree of FR-15 possible. | FR-12 |
+| SC-01 | WBS-4.1 | As a database developer, I want every object classified as added, removed or changed, so that I see the full difference at a glance. | FR-13, FR-14 |
+| SC-01 | WBS-4.2 | As a database developer, I want to drill down from a changed table to the columns and indexes that changed, so that I understand the change without reading the whole definition. | FR-15 |
 | SC-02 | WBS-4.3 | As a DBA, I want every object kind I use (indexes, permissions, partitions, extended properties and more) compared, so that nothing is deployed by surprise. | FR-16 |
+| SC-08 | WBS-5.1 | As a BI developer, I want a renamed column recognized as a rename candidate, so that I do not drop a column full of data by mistake. | FR-17 |
 | SC-07 | WBS-11.1 | As a database developer without production access, I want to compare against a production snapshot, so that I see what production will receive. | FR-41, FR-42 |
 
 <!-- pagebreak -->
@@ -170,6 +181,119 @@ A valid connection exists (UC-01). The login has at least VIEW DEFINITION for a 
 
 **Post-condition(s):**
 A snapshot of every readable object exists with hashes per object and per part, and the report says exactly what could not be read.
+
+#### 3.4.4 UC-03 — Configure comparison options
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-03 |
+| **Use case name** | Configure comparison options |
+| **Goal / Purpose** | Decide which differences count, so the result shows only what matters to the team. |
+| **Actor(s)** | UT-01 Database Developer (primary). |
+| **Related Project Plan task(s)** | T-03 |
+| **Related functional requirement(s)** | FR-11 to FR-13 |
+
+**Pre-condition(s):**
+The user has opened the settings panel or passes options on the command line.
+
+**Main success flow:**
+
+1. **Actor:** Opens the comparison settings.
+2. **System:** Shows the options with their defaults: ignore whitespace and comments on, ignore system named constraints on, the rest off.
+3. **Actor:** Changes options, for example ignores collation and column order.
+4. **System:** Saves the options for the next comparisons.
+5. **Actor:** Starts a comparison (UC-04).
+6. **System:** Normalizes and hashes every object with the chosen options, so ignored differences produce the same hash.
+
+**Alternative flows:**
+
+- **A1 — Options from the command line (branches from step 1):**
+  1. The actor passes options to the compare command.
+  2. The system applies them for this run only.
+  3. The flow continues at step 6.
+
+**Exception / error flows:**
+
+- **E1 — Body cannot be tokenized (occurs at step 6):** For a body that ScriptDom cannot tokenize the system falls back to whitespace normalization and never changes the text, so a difference is shown rather than hidden.
+
+**Post-condition(s):**
+The comparison uses the selected options, and string literals in module bodies are never altered by normalization.
+
+#### 3.4.5 UC-04 — Compare two databases
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-04 |
+| **Use case name** | Compare two databases |
+| **Goal / Purpose** | Find every difference between a source and a target database. |
+| **Actor(s)** | UT-01 Database Developer, UT-02 DBA (primary). UT-06 SQL Server (secondary). |
+| **Related Project Plan task(s)** | T-04 |
+| **Related functional requirement(s)** | FR-14 to FR-16 |
+
+**Pre-condition(s):**
+Source and target connections are selected (UC-01).
+
+**Main success flow:**
+
+1. **Actor:** Starts the comparison.
+2. **System:** Extracts both schemas in parallel (UC-02) and reports progress.
+3. **System:** Matches objects by schema, name and kind and compares their hashes.
+4. **System:** Classifies each object as added, removed, changed, equal or indeterminate.
+5. **System:** For changed objects lists the changed parts as a change tree.
+6. **System:** Shows the counts and the grouped result.
+
+**Alternative flows:**
+
+- **A1 — Only casing differs (branches from step 3):**
+  1. An object name differs only in casing.
+  2. With case-insensitive names the system treats it as the same object and does not list it. With case-sensitive names it reports one change.
+  3. The flow continues at step 4.
+- **A2 — No differences (branches from step 6):**
+  1. All objects are equal.
+  2. The system reports that the databases are identical and offers no script.
+
+**Exception / error flows:**
+
+- **E1 — One side cannot be extracted (occurs at step 2):** The system stops the comparison, names the side and the reason, and keeps the other snapshot discarded so no partial result is shown.
+- **E2 — Object kind not supported for scripting (occurs at step 5):** The difference is still listed and marked as report only, so it is never silently ignored.
+
+**Post-condition(s):**
+The user sees every difference, and every indeterminate object is listed with its reason.
+
+#### 3.4.6 UC-05 — Review rename candidates
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-05 |
+| **Use case name** | Review rename candidates |
+| **Goal / Purpose** | Avoid losing data when an object or column was renamed instead of dropped and recreated. |
+| **Actor(s)** | UT-03 BI / ETL Developer (primary). |
+| **Related Project Plan task(s)** | T-05 |
+| **Related functional requirement(s)** | FR-17 |
+
+**Pre-condition(s):**
+A comparison (UC-04) contains at least one removed and one added object or column.
+
+**Main success flow:**
+
+1. **System:** Finds removed and added pairs whose structure hashes are identical.
+2. **System:** Lists them as rename candidates next to the normal differences.
+3. **Actor:** Opens a candidate and compares the two definitions.
+4. **Actor:** Confirms the rename and writes the sp_rename call, or rejects the candidate.
+5. **System:** Keeps the candidate out of the drop and create steps of the safe mode script.
+
+**Alternative flows:**
+
+- **A1 — Candidate rejected (branches from step 4):**
+  1. The actor decides it is a real drop and add.
+  2. The system treats the pair as normal differences, the drop stays subject to the risk rules.
+
+**Exception / error flows:**
+
+- **E1 — Several possible pairs (occurs at step 2):** When one removed object matches several added ones, the system lists every pair and does not choose, so the user decides.
+
+**Post-condition(s):**
+Renames are visible and no rename candidate is scripted as a drop without the user's decision.
 
 #### 3.4.12 UC-11 — Compare against a snapshot
 
