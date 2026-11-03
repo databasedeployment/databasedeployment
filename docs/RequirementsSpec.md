@@ -90,8 +90,14 @@ Project Plan.
 | FR-33 | T-09 | D-02, D-04 | The system shall execute a generated script against the target, split at GO lines and run on a single connection so a transaction spans all batches. | Must | Splitter tests and an execution test on a fixture with a multi batch transaction. |
 | FR-34 | T-09 | D-02, D-04 | The system shall stream SSMS style messages during execution: PRINT output, rows affected and errors with message number, level, state and the line in the whole script. | Must | Execution tests compare the messages with SSMS for the same script. |
 | FR-35 | T-09 | D-02, D-04 | The system shall let the user cancel a running execution and shall roll back the open transaction. | Should | Cancel test leaves the fixture target unchanged. |
+| FR-36 | T-10 | D-03 | The system shall read named comparison jobs from jobs.json, with shared default connections and per side database names, and shall name the job in every validation error. | Must | Configuration tests for defaults, per side names, duplicates, missing sources and comments in the file. |
+| FR-37 | T-10 | D-03 | The system shall let the user select jobs interactively or with an expression such as 1,3-5,EDWDM or all. | Must | Selector tests for positions, ranges, names, all and invalid tokens. |
+| FR-38 | T-10 | D-03 | The system shall run the selected jobs in parallel under one shared query limit and print each result as soon as its job finishes. | Should | Runner test with fixture jobs. Total open queries never exceed the limit. |
+| FR-39 | T-10 | D-03, D-06 | The system shall exit with code 0 when no differences are found, 1 when differences are found and 2 when an error occurs. | Must | A GitHub Actions job checks all three exit codes. |
+| FR-40 | T-10 | D-03 | The system shall provide compare, script and probe commands with help text. | Must | Help output lists every command and option. |
 | FR-41 | T-11 | D-01, D-03 | The system shall export a database snapshot to a compressed file with a version header. | Should | Round trip test: an imported snapshot equals the live extraction. |
 | FR-42 | T-11 | D-01, D-03, D-04 | The system shall compare a live database against a snapshot file without access to the database the snapshot came from. | Should | Comparing a fixture with its own snapshot reports no differences. |
+| FR-43 | T-12 | D-03, D-04 | The system shall export comparison and risk results as standalone HTML and JSON reports. | Should | The HTML report opens without network access and its counts match the JSON report. |
 | FR-44 | T-13 | D-04 | The system shall provide a local web interface, reachable only from the local machine, with source and target selectors and live progress over Server-Sent Events. | Must | API refuses non-loopback binding. First progress event arrives within one second. |
 | FR-45 | T-13 | D-04 | The system shall show the result as a tree grouped by object kind with checkboxes, and the source and target definitions side by side with navigation between differences. | Must | Walk-through on fixtures: every difference of expected.md is visible in the tree and in the side-by-side view. |
 | FR-46 | T-13 | D-04 | The system shall provide a risk view, a settings panel for comparison options, and every interface text in English and Turkish. | Must | Localization check finds no missing key in either language. |
@@ -100,11 +106,29 @@ Project Plan.
 | FR-49 | T-14 | D-05, D-04 | The system shall explain each deployment risk in plain language and suggest a mitigation. | Should | Every risk finding of the layered fixture receives an explanation. |
 | FR-50 | T-14 | D-05 | The system shall produce review comments on a generated deployment script. | Could | Review output is parsed into comments that reference script lines. |
 | FR-51 | T-14 | D-05 | The system shall send only schema metadata to the AI provider, never row data, use a local model by default and work fully when the AI assistant is disabled. | Must | Prompt logging test finds no row data. All features pass their tests with AI disabled. |
+| FR-52 | T-15 | D-06 | The system shall reproduce exactly the documented differences of the scripted fixture databases. | Must | End-to-end test: dev against prod returns the five differences of expected.md and none of its traps. |
+| FR-53 | T-15 | D-06 | The build pipeline shall build the solution and run every automated test on each pull request and prevent merging when a check fails. | Must | Branch protection requires the build-test check. A failing test blocks the merge. |
+| FR-54 | T-15 | D-06 | The system shall be benchmarked against DacFx on a database with 10,000+ objects and the result shall be recorded. | Should | BenchmarkDotNet report stored with the release. |
+| FR-55 | T-16 | D-07 | The system shall come with a README, a CLI reference, a web interface guide and configuration samples that let a new user install the tool, configure jobs.json and run a comparison. | Must | Two team members who did not write the guide follow it from a clean machine. |
 
 ### 2.2 Non-functional Requirements
 
 | Requirement ID | Quality attribute | Non-functional requirement (natural language) | Applies to | Verification / measurement |
 |---|---|---|---|---|
+| NFR-01 | Security | The system shall store connection passwords only in DPAPI protected form for the current Windows user and shall never write them to logs, reports, prompts or HTTP responses. | FR-05, FR-43, FR-51 | Automated scan of stored files, logs, reports and prompts for test passwords. API response tests. |
+| NFR-02 | Security | The system shall access source and target databases with read-only catalog queries, except for script execution and migration apply which require an explicit user action. | FR-06, FR-31, FR-33 | Query safety tests over every catalog query. Code review checklist. |
+| NFR-03 | Security | The web backend shall listen on 127.0.0.1 only. | FR-44 | Test of the listen address. Manual check that the port is not reachable from another machine. |
+| NFR-04 | Performance | The system shall compare two databases with 10,000+ objects within 30 seconds on a local network and at least five times faster than DacFx. | FR-06, FR-14 | BenchmarkDotNet run against DacFx on a generated 10,000 object database (WBS-15.5). |
+| NFR-05 | Performance | The web interface shall show the first progress update within one second of starting a comparison. | FR-09, FR-44 | Timing log in end-to-end tests. |
+| NFR-06 | Usability | The web interface shall follow the SSDT Schema Compare layout (source and target, grouped tree, side-by-side definitions) so SSDT users can use it without training. | UT-01 to UT-04 | Walk-through with three external users who complete compare and script tasks without help. |
+| NFR-07 | Usability | Every interface text shall be available in English and Turkish, and the CLI shall describe every command and option in its help text. | FR-40, FR-46 | Localization completeness check. Help text review. |
+| NFR-08 | Reliability | Objects that cannot be read shall be reported as indeterminate and never as equal. | FR-08, FR-14 | Coverage matrix test and low privilege fixture. |
+| NFR-09 | Reliability | A generated deployment script shall either apply completely or leave the target unchanged, and its rollback script shall restore the original schema. | FR-20, FR-23 | Apply and rollback round trip tests on fixtures. Fault injection for a failing step. |
+| NFR-10 | Reliability | A failing optional query or a lost connection shall not stop the whole run without a clear message, and a failed job shall not stop the other jobs of a CLI run. | FR-07, FR-38 | Fault injection tests for failed queries and lost connections. |
+| NFR-11 | Maintainability | Core, CLI, Web and AI shall be separate projects that depend only on the module contracts of WBS-2.1, and Core shall keep at least 80% line coverage. | Whole system | CI coverage report. Pull request review. |
+| NFR-12 | Compatibility | The system shall support SQL Server 2016 or later and Azure SQL Database, and optional catalog queries shall degrade gracefully on older versions. | FR-06, FR-07 | Test matrix with SQL Server 2016 and LocalDB. Low privilege login fixture. |
+| NFR-13 | Portability | The CLI and Core shall run on Windows, macOS and Linux with .NET 8. Windows only features (DPAPI password storage, LocalDB fixtures) shall degrade without failing on other platforms. | D-01, D-03 | CI on Windows. Local runs on macOS. Password storage refuses to store instead of failing. |
+| NFR-14 | Privacy | AI features shall be optional, use a local model by default and receive schema metadata only. | FR-48 to FR-51 | Prompt logging test. All tests pass with AI disabled. |
 
 ---
 
@@ -259,12 +283,22 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-06 | WBS-8.2 | As a release manager, I want a history of applied migrations, a list of pending ones and a drift check, so that I know the exact state of every environment. | FR-30, FR-31, FR-32 |
 | SC-04 | WBS-9.1 | As a DBA, I want to run the generated script with GO batches and SSMS style messages, so that I do not have to copy it into another tool. | FR-33, FR-34 |
 | SC-04 | WBS-9.2 | As a DBA, I want to follow the execution live in the browser and stop it if needed, so that I stay in control of the deployment. | FR-34, FR-35 |
+| SC-03 | WBS-10.1 | As a BI developer, I want to define my layers once in jobs.json and pick them with short expressions, so that I can run the same selection by hand or in a script. | FR-36, FR-37, FR-40 |
+| SC-03 | WBS-10.2 | As a BI developer, I want the jobs to run in parallel and the command to exit with a meaningful code, so that my pipeline can react to differences. | FR-38, FR-39 |
 | SC-07 | WBS-11.1 | As a database developer without production access, I want to compare against a production snapshot, so that I see what production will receive. | FR-41, FR-42 |
+| SC-05 | WBS-12.1 | As a release manager, I want an HTML and a JSON report of the comparison, so that I can attach it to a change request or process it in other tools. | FR-43 |
 | SC-01 | WBS-13.1 | As a database developer, I want the comparison to report progress live in the browser, so that I know it is running and how long it will take. | FR-44, FR-47 |
 | SC-01 | WBS-13.2 | As a database developer, I want a grouped result tree and a side-by-side view, so that I can review changes the way I do in SSDT. | FR-45 |
 | SC-02 | WBS-13.3 | As a DBA, I want a risk view, comparison settings and the interface in my language, so that I can work comfortably and adjust what counts as a difference. | FR-13, FR-46 |
 | SC-05 | WBS-14.1 | As a release manager, I want the assistant to use a local model by default and the tool to work without it, so that no schema leaves the company unless we decide so. | FR-51 |
 | SC-05 | WBS-14.2 | As a release manager, I want release notes, risk explanations and script review comments in plain language, so that non-specialists understand the release. | FR-48, FR-49, FR-50 |
+| SC-09 | WBS-15.1 | Technical activity: repository, solution and CI. It has no user story of its own and supports SC-09 for contributors. | FR-53 |
+| SC-09 | WBS-15.2 | Technical activity: fixture databases with documented differences used to verify FR-14 to FR-35. | FR-52 |
+| SC-09 | WBS-15.3 | Technical activity: coverage matrix and cross-module tests that prove every object kind is either scripted or reported. | FR-16, FR-52 |
+| SC-09 | WBS-15.4 | Technical activity: end-to-end tests and stabilization on all fixtures before the release. | FR-52, FR-53 |
+| SC-03 | WBS-15.5 | As a BI developer, I want proof that SchemaDiff is much faster than DacFx on a large database, so that I can justify replacing SSDT compare in our nightly runs. | FR-54 |
+| SC-10 | WBS-16.1 | As a new user, I want a README, a CLI reference and a web guide, so that I can install and use the tool without asking the team. | FR-55 |
+| SC-10 | WBS-16.2 | Technical activity: demo scenario and presentation material for the final demo. It has no user story. | FR-55 |
 
 <!-- pagebreak -->
 
@@ -642,6 +676,47 @@ A deployment script exists (UC-06) and the login has the needed DDL permissions.
 **Post-condition(s):**
 Either every batch ran and the run is marked successful, or the target transaction was rolled back and the failure is reported with its line.
 
+#### 3.4.11 UC-10 — Run comparison jobs from the CLI
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-10 |
+| **Use case name** | Run comparison jobs from the CLI |
+| **Goal / Purpose** | Compare many database pairs in one command, by hand or from a pipeline. |
+| **Actor(s)** | UT-03 BI / ETL Developer, UT-05 CI/CD pipeline (primary). |
+| **Related Project Plan task(s)** | T-10 |
+| **Related functional requirement(s)** | FR-36 to FR-40 |
+
+**Pre-condition(s):**
+A jobs.json file with at least one job exists.
+
+**Main success flow:**
+
+1. **Actor:** Runs the compare command with a selection expression such as 1,3-5,EDWDM.
+2. **System:** Loads and validates jobs.json and resolves the selection.
+3. **System:** Runs the selected jobs in parallel under one shared query limit.
+4. **System:** Prints each result as soon as its job finishes.
+5. **System:** Exits with 0 when nothing differs, 1 when something differs and 2 when a job failed.
+
+**Alternative flows:**
+
+- **A1 — Interactive selection (branches from step 1):**
+  1. The actor runs the command without a selection.
+  2. The system lists the jobs with their numbers and asks for an expression.
+  3. The flow continues at step 2.
+- **A2 — Script and probe commands (branches from step 1):**
+  1. The actor runs the script or probe command.
+  2. The system generates the scripts or the coverage report for the selected jobs.
+
+**Exception / error flows:**
+
+- **E1 — Invalid configuration (occurs at step 2):** The system names the job position and the problem (for example a duplicate name) and exits with 2 without running anything.
+- **E2 — Invalid selection (occurs at step 2):** The system names the invalid token and lists the valid names, then exits with 2.
+- **E3 — One job fails (occurs at step 3):** The failed job is reported with its error, the other jobs complete, and the exit code is 2.
+
+**Post-condition(s):**
+Every selected job has a result or an error, and the exit code reflects the outcome for the pipeline.
+
 #### 3.4.12 UC-11 — Compare against a snapshot
 
 | Field | Description |
@@ -675,6 +750,39 @@ The DBA can connect to the reference database. The developer can connect to the 
 
 **Post-condition(s):**
 The comparison result is the same as comparing with the live reference database at the time of the export.
+
+#### 3.4.13 UC-12 — Export a report
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-12 |
+| **Use case name** | Export a report |
+| **Goal / Purpose** | Share a comparison and its risks with people who do not run the tool. |
+| **Actor(s)** | UT-04 Release Manager, UT-05 CI/CD pipeline (primary). |
+| **Related Project Plan task(s)** | T-12 |
+| **Related functional requirement(s)** | FR-43 |
+
+**Pre-condition(s):**
+A comparison result exists.
+
+**Main success flow:**
+
+1. **Actor:** Requests an HTML or JSON report.
+2. **System:** Writes a standalone report with the counts, the differences and the risk findings.
+3. **Actor:** Opens or attaches the report.
+
+**Alternative flows:**
+
+- **A1 — Report from the CLI (branches from step 1):**
+  1. The pipeline passes a report option to the compare command.
+  2. The system writes one report per job next to the run.
+
+**Exception / error flows:**
+
+- **E1 — Report cannot be written (occurs at step 2):** The system names the path and the reason. The comparison result and the exit code stay unchanged.
+
+**Post-condition(s):**
+A report exists that opens without network access and matches the comparison counts.
 
 #### 3.4.14 UC-13 — Review differences in the web interface
 
@@ -748,6 +856,90 @@ A comparison exists and the AI assistant is enabled with a local model or a conf
 **Post-condition(s):**
 The user has an explanation, and no row data has left the machine.
 
+#### 3.4.16 UC-15 — Verify a change in the pipeline
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-15 |
+| **Use case name** | Verify a change in the pipeline |
+| **Goal / Purpose** | Make sure a change to SchemaDiff works before it is merged. |
+| **Actor(s)** | UT-01 Database Developer as contributor, UT-05 CI/CD pipeline (primary). |
+| **Related Project Plan task(s)** | T-15 |
+| **Related functional requirement(s)** | FR-52 to FR-54 |
+
+**Pre-condition(s):**
+A pull request is open against main.
+
+**Main success flow:**
+
+1. **Actor:** Pushes commits to the pull request branch.
+2. **System:** Builds the solution on Windows and runs the unit, integration and fixture tests.
+3. **System:** Publishes test results and coverage and reports the check on the pull request.
+4. **Actor:** A teammate reviews and approves the change.
+5. **System:** Allows the merge once the check is green and the approval is present.
+
+**Alternative flows:**
+
+- **A1 — Benchmark run (branches from step 2):**
+  1. Before a release the benchmark job runs against the 10,000 object database.
+  2. The result is stored with the release.
+
+**Exception / error flows:**
+
+- **E1 — A test fails (occurs at step 2):** The check turns red, the merge stays blocked and the failing test is listed in the results.
+
+**Post-condition(s):**
+Only changes with green checks and an approval reach main.
+
+#### 3.4.17 UC-16 — Get started with the documentation
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-16 |
+| **Use case name** | Get started with the documentation |
+| **Goal / Purpose** | Install the tool and run a first comparison without help from the team. |
+| **Actor(s)** | UT-04 Release Manager or any new user (primary). |
+| **Related Project Plan task(s)** | T-16 |
+| **Related functional requirement(s)** | FR-55 |
+
+**Pre-condition(s):**
+The user has a machine with access to two SQL Server databases.
+
+**Main success flow:**
+
+1. **Actor:** Opens the README and follows the installation steps.
+2. **System:** The release package starts the web interface and the CLI.
+3. **Actor:** Copies the sample jobs.json and fills in two servers.
+4. **Actor:** Runs the compare command as described in the CLI reference.
+5. **System:** Prints the result and exits with the documented code.
+
+**Alternative flows:**
+
+- **A1 — Web first (branches from step 2):**
+  1. The user follows the web interface guide instead.
+  2. The guide walks through connect, compare and review.
+
+**Exception / error flows:**
+
+- **E1 — Prerequisite missing (occurs at step 2):** The documentation lists the prerequisites (Windows for DPAPI, .NET 8 for source builds) and the error message points to that section.
+
+**Post-condition(s):**
+The new user has run a comparison using only the documentation.
+
 ---
 
 ## 4. Changelog
+
+Changes to the Project Plan since version 1.0, as asked in the assignment of this deliverable.
+
+| Date | Change | Effect on the plan |
+|---|---|---|
+| 2026-11-02 | Deliverable deadlines aligned with Ninova: Project Plan 25.10.2026, Requirements Specification 08.11.2026. | Plan version 1.1. No change to scope, WBS, estimates or schedule. |
+| 2026-11-02 | The charter now names the organization repository and the project board. | Documentation only. |
+| W1 | The XxHash128 helper was delivered with the domain model (WBS-2.1), because snapshots need a hash from the start. | WBS-3.2 keeps hash stability tests and sub-part hashing in W4. Effort unchanged. |
+| W2 | Ordering of new objects is a shared component (DependencyOrder) delivered with WBS-6.1 and used by every generator. | Removes duplicated ordering code from WBS-6.2 and WBS-6.3. Effort unchanged. |
+| W2 | The recent connections store moved from the web project to Core behind a secret protector interface. | WBS-1.2 can be tested on every platform, DPAPI is still used on Windows. |
+| W3 | The script execution engine (WBS-9.1) lives in Core instead of the web project. | The CLI can reuse it. WBS-9.2 still delivers the web execution view. |
+| W3 | A web integration test project was added under tests/unit. | Supports WBS-13.1 to WBS-13.3 and the security checks of NFR-01 and NFR-03. |
+
+The critical path (WBS-2.1, WBS-6.1 to WBS-6.5) and the total of 31 man-weeks are unchanged.
