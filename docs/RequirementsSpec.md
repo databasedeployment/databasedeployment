@@ -55,6 +55,11 @@ Project Plan.
 
 | Requirement ID | Related task ID(s) | Related deliverable ID(s) | Functional requirement (natural language) | Priority | Verification / acceptance condition |
 |---|---|---|---|---|---|
+| FR-01 | T-01 | D-01, D-04 | The system shall let the user connect to a SQL Server instance by entering the server, the authentication type (Windows or SQL login), the user name and password, and the encrypt and trust server certificate options. | Must | Unit tests turn every field combination into the expected connection string. Manual connect to LocalDB and to a SQL login succeeds. |
+| FR-02 | T-01 | D-01, D-04 | The system shall test a connection on request and show the server name, version, edition and login, or the first line of the error when the connection fails. | Must | A failed test returns an error message instead of an exception (unit and API tests). A successful test shows the server details. |
+| FR-03 | T-01 | D-01, D-04 | The system shall list the online user databases the login can access on the selected server. | Must | On a fixture server the list contains the fixture databases and no system or offline database. |
+| FR-04 | T-01 | D-04 | The system shall keep the 20 most recently used connections and let the user reuse or forget each of them. | Should | Unit tests for ordering, the 20 entry cap and forgetting. The list survives a restart. |
+| FR-05 | T-01 | D-01, D-04 | The system shall store a password only when the user asks for it, protected with Windows DPAPI for the current user, and shall never return a stored password to the browser. | Must | Test reads the stored file and finds no plain text password. API test checks that no response contains a password. DPAPI round trip runs on Windows CI. |
 | FR-06 | T-02 | D-01 | The system shall read the schema with one read-only catalog query per object class, running the queries on parallel connections under a global concurrency limit. | Must | Query tests prove every query is read-only and reads only sys views. Gate tests prove the limit is never exceeded. |
 | FR-07 | T-02 | D-01 | The system shall continue the comparison when an optional catalog query fails because of an older server version or a missing permission, and shall name the failed query in the extraction report. | Must | Fault injection test makes an optional query fail and the comparison still completes with a warning that names it. |
 | FR-08 | T-02 | D-01 | The system shall detect missing VIEW DEFINITION permission and report the affected modules as uncertain, never as equal. | Must | A low privilege fixture login yields uncertain modules and a warning. No uncertain object is counted as equal. |
@@ -87,6 +92,14 @@ Project Plan.
 | FR-35 | T-09 | D-02, D-04 | The system shall let the user cancel a running execution and shall roll back the open transaction. | Should | Cancel test leaves the fixture target unchanged. |
 | FR-41 | T-11 | D-01, D-03 | The system shall export a database snapshot to a compressed file with a version header. | Should | Round trip test: an imported snapshot equals the live extraction. |
 | FR-42 | T-11 | D-01, D-03, D-04 | The system shall compare a live database against a snapshot file without access to the database the snapshot came from. | Should | Comparing a fixture with its own snapshot reports no differences. |
+| FR-44 | T-13 | D-04 | The system shall provide a local web interface, reachable only from the local machine, with source and target selectors and live progress over Server-Sent Events. | Must | API refuses non-loopback binding. First progress event arrives within one second. |
+| FR-45 | T-13 | D-04 | The system shall show the result as a tree grouped by object kind with checkboxes, and the source and target definitions side by side with navigation between differences. | Must | Walk-through on fixtures: every difference of expected.md is visible in the tree and in the side-by-side view. |
+| FR-46 | T-13 | D-04 | The system shall provide a risk view, a settings panel for comparison options, and every interface text in English and Turkish. | Must | Localization check finds no missing key in either language. |
+| FR-47 | T-13 | D-04 | The system shall release the data of a comparison session when its browser tab is closed. | Should | Closing the tab triggers the dispose call and the session is gone. |
+| FR-48 | T-14 | D-05 | The system shall produce a plain language summary of a comparison that can be used as release notes. | Should | Structured output test on fixture comparisons with a local model. |
+| FR-49 | T-14 | D-05, D-04 | The system shall explain each deployment risk in plain language and suggest a mitigation. | Should | Every risk finding of the layered fixture receives an explanation. |
+| FR-50 | T-14 | D-05 | The system shall produce review comments on a generated deployment script. | Could | Review output is parsed into comments that reference script lines. |
+| FR-51 | T-14 | D-05 | The system shall send only schema metadata to the AI provider, never row data, use a local model by default and work fully when the AI assistant is disabled. | Must | Prompt logging test finds no row data. All features pass their tests with AI disabled. |
 
 ### 2.2 Non-functional Requirements
 
@@ -222,6 +235,9 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 
 | Scenario ID | Project Plan WBS activity ID | User story | Related requirement ID(s) |
 |---|---|---|---|
+| SC-01 | WBS-1.1 | As a database developer, I want to connect by entering the same fields as in SSDT and test the connection, so that I know the server is reachable before I compare. | FR-01, FR-02, FR-03 |
+| SC-01 | WBS-1.2 | As a database developer, I want my recent connections and, if I choose, my password to be remembered securely, so that I do not type them again for every comparison. | FR-04, FR-05 |
+| SC-01 | WBS-1.3 | As a database developer, I want a connect dialog with a database drop-down, so that I can pick the database instead of typing its name. | FR-01, FR-03 |
 | SC-01 | WBS-2.1 | Technical activity: the shared domain model and module contracts. It has no direct user story and enables every story of T-02 to T-14. | FR-06, FR-14 |
 | SC-01 | WBS-2.2 | As a database developer, I want the schema of a large database read in seconds, so that comparing before every release is not a burden. | FR-06 |
 | SC-03 | WBS-2.3 | As a BI developer, I want extraction to run in parallel without overloading the server, so that comparing many layers at once stays safe. | FR-06, FR-09 |
@@ -244,6 +260,11 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-04 | WBS-9.1 | As a DBA, I want to run the generated script with GO batches and SSMS style messages, so that I do not have to copy it into another tool. | FR-33, FR-34 |
 | SC-04 | WBS-9.2 | As a DBA, I want to follow the execution live in the browser and stop it if needed, so that I stay in control of the deployment. | FR-34, FR-35 |
 | SC-07 | WBS-11.1 | As a database developer without production access, I want to compare against a production snapshot, so that I see what production will receive. | FR-41, FR-42 |
+| SC-01 | WBS-13.1 | As a database developer, I want the comparison to report progress live in the browser, so that I know it is running and how long it will take. | FR-44, FR-47 |
+| SC-01 | WBS-13.2 | As a database developer, I want a grouped result tree and a side-by-side view, so that I can review changes the way I do in SSDT. | FR-45 |
+| SC-02 | WBS-13.3 | As a DBA, I want a risk view, comparison settings and the interface in my language, so that I can work comfortably and adjust what counts as a difference. | FR-13, FR-46 |
+| SC-05 | WBS-14.1 | As a release manager, I want the assistant to use a local model by default and the tool to work without it, so that no schema leaves the company unless we decide so. | FR-51 |
+| SC-05 | WBS-14.2 | As a release manager, I want release notes, risk explanations and script review comments in plain language, so that non-specialists understand the release. | FR-48, FR-49, FR-50 |
 
 <!-- pagebreak -->
 
@@ -257,9 +278,60 @@ notation and were drawn with PlantUML. Their sources are kept next to the images
 
 ![Whole-system use case diagram of SchemaDiff](images/requirements/uc-whole-system.png)
 
+#### 3.3.2 Functionality-Specific Use Case Diagram — Connection Management
+
+![Connection Management use case diagram](images/requirements/uc-connection.png)
+
+**Functionality covered:** T-01 / FR-01 to FR-05 / UC-01  
+**Diagram notes:** Testing the connection and listing databases are part of every connect. Reusing a recent connection and storing the password are optional extensions chosen by the user.
+
 ### 3.4 Use Cases
 
 Every task of the Project Plan has at least one detailed use case below.
+
+#### 3.4.2 UC-01 — Connect to a database
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-01 |
+| **Use case name** | Connect to a database |
+| **Goal / Purpose** | Open a working connection to a SQL Server database that can be used as source or target. |
+| **Actor(s)** | UT-01 Database Developer, UT-02 DBA (primary). UT-06 SQL Server (secondary). |
+| **Related Project Plan task(s)** | T-01 |
+| **Related functional requirement(s)** | FR-01 to FR-05 |
+
+**Pre-condition(s):**
+SchemaDiff is running locally and the user knows the server name and credentials.
+
+**Main success flow:**
+
+1. **Actor:** Opens the connect dialog for the source or the target.
+2. **System:** Shows the server, authentication, user name, password, encrypt and trust certificate fields and the recent connections.
+3. **Actor:** Enters the server and credentials and presses Test.
+4. **System:** Connects and shows the server name, version, edition and login.
+5. **Actor:** Opens the database drop-down.
+6. **System:** Lists the online user databases the login can access.
+7. **Actor:** Selects a database and confirms, optionally asking to remember the password.
+8. **System:** Stores the connection in the recent list, protects the password with DPAPI if asked, and uses the connection for the comparison.
+
+**Alternative flows:**
+
+- **A1 — Reuse a recent connection (branches from step 2):**
+  1. The actor picks an entry from the recent connections.
+  2. The system fills in the fields. A stored password is resolved on the server and never sent to the browser.
+  3. The flow continues at step 5.
+- **A2 — Forget a recent connection (branches from step 2):**
+  1. The actor removes an entry.
+  2. The system deletes it and its protected password from disk.
+  3. The flow returns to step 2.
+
+**Exception / error flows:**
+
+- **E1 — Connection fails (occurs at step 4):** The system shows the first line of the error (for example login failed or server not found). No exception reaches the user and the actor can correct the fields.
+- **E2 — Password cannot be stored (occurs at step 8):** On a platform without DPAPI the system connects but does not store the password, and tells the user it will be asked again.
+
+**Post-condition(s):**
+The selected connection is valid and appears at the top of the recent connections. No password is stored in plain text or returned in any response.
 
 #### 3.4.3 UC-02 — Extract a schema
 
@@ -603,6 +675,78 @@ The DBA can connect to the reference database. The developer can connect to the 
 
 **Post-condition(s):**
 The comparison result is the same as comparing with the live reference database at the time of the export.
+
+#### 3.4.14 UC-13 — Review differences in the web interface
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-13 |
+| **Use case name** | Review differences in the web interface |
+| **Goal / Purpose** | Review a comparison in the browser the same way as in SSDT Schema Compare. |
+| **Actor(s)** | UT-01 Database Developer, UT-02 DBA (primary). |
+| **Related Project Plan task(s)** | T-13 |
+| **Related functional requirement(s)** | FR-44 to FR-47 |
+
+**Pre-condition(s):**
+SchemaDiff runs locally and the browser is open on 127.0.0.1.
+
+**Main success flow:**
+
+1. **Actor:** Selects source and target and starts the comparison.
+2. **System:** Streams live progress over Server-Sent Events.
+3. **System:** Shows the result tree grouped by object kind with checkboxes.
+4. **Actor:** Selects an object.
+5. **System:** Shows source and target definitions side by side with navigation between the differences.
+6. **Actor:** Opens the risk view or the settings, or switches the language.
+
+**Alternative flows:**
+
+- **A1 — Several comparisons at once (branches from step 1):**
+  1. The actor opens another tab and starts a second comparison.
+  2. Each tab has its own session and progress.
+
+**Exception / error flows:**
+
+- **E1 — Tab closed during a comparison (occurs at step 2):** The browser sends a dispose call and the system releases the session data. A running execution is still completed on the server so no deployment is left half done.
+- **E2 — Backend not reachable (occurs at step 1):** The page shows that the local backend is not running and how to start it.
+
+**Post-condition(s):**
+The user has reviewed the differences and selected the objects for the next step.
+
+#### 3.4.15 UC-14 — Get AI explanations
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-14 |
+| **Use case name** | Get AI explanations |
+| **Goal / Purpose** | Understand a comparison, its risks and a script in plain language. |
+| **Actor(s)** | UT-04 Release Manager, UT-02 DBA (primary). UT-07 AI provider (secondary). |
+| **Related Project Plan task(s)** | T-14 |
+| **Related functional requirement(s)** | FR-48 to FR-51 |
+
+**Pre-condition(s):**
+A comparison exists and the AI assistant is enabled with a local model or a configured provider.
+
+**Main success flow:**
+
+1. **Actor:** Asks for release notes, risk explanations or a script review.
+2. **System:** Builds a prompt from schema metadata and risk findings only, never row data.
+3. **System:** Sends the prompt to the configured provider, local by default.
+4. **System:** Parses the structured answer and shows it next to the comparison.
+
+**Alternative flows:**
+
+- **A1 — Cloud provider (branches from step 3):**
+  1. The team has configured an OpenAI-compatible provider.
+  2. The system uses it instead of the local model with the same metadata only prompt.
+
+**Exception / error flows:**
+
+- **E1 — Provider unavailable or slow (occurs at step 3):** The system shows that the assistant is not available. Every other feature keeps working.
+- **E2 — Answer cannot be parsed (occurs at step 4):** The system shows the raw text marked as unstructured instead of guessing.
+
+**Post-condition(s):**
+The user has an explanation, and no row data has left the machine.
 
 ---
 
