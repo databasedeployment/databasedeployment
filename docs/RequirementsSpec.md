@@ -67,6 +67,13 @@ Project Plan.
 | FR-15 | T-04 | D-01, D-04 | The system shall show the changed sub-parts of a changed object as a change tree (for example Add Column, Alter Column, Drop Index). | Must | Change tree tests for every sub-change kind on fixture pairs. |
 | FR-16 | T-04 | D-01 | The system shall compare every object kind listed in the charter scope, and shall report explicitly any kind it cannot script. | Must | Coverage matrix test: every object kind is either scripted or listed as report only. |
 | FR-17 | T-05 | D-01 | The system shall detect a removed and an added object with identical structure and report them as a rename candidate, without generating sp_rename. | Should | Rename tests on fixture pairs. No sp_rename appears in generated scripts for candidates. |
+| FR-18 | T-06 | D-02 | The system shall generate a deployment script in dependency order (types, tables, modules, security, permissions, settings) in which every object is created after the objects it references. | Must | Ordering tests on the reference graph. Every generated fixture script runs without a missing object error. |
+| FR-19 | T-06 | D-02 | The system shall turn the CREATE statement of an existing module into ALTER at token level, keeping the original body. | Must | Token level tests with comments and strings around the CREATE keyword. |
+| FR-20 | T-06 | D-02 | The system shall wrap the generated script in a single transaction with XACT_ABORT ON so that a failing step leaves the target unchanged. | Must | A script with a failing step leaves the fixture target identical to its state before the run. |
+| FR-21 | T-06 | D-02, D-04 | The system shall run in safe mode by default, leaving data loss steps out of the script and listing them separately. | Must | A column drop on a filled table is not in the safe mode script and is listed as excluded. |
+| FR-22 | T-06 | D-02, D-04 | The system shall generate the script only for the objects the user selected. | Must | Selection tests: unselected objects never appear in the script. |
+| FR-23 | T-06 | D-02 | The system shall generate a rollback script that restores the original target schema. | Should | Apply then rollback on fixtures restores the original schema hash. |
+| FR-24 | T-06 | D-02 | The system shall generate a mixed direction script in which the direction (source to target or target to source) is chosen per object. | Could | Bidirectional tests on fixture pairs. |
 | FR-41 | T-11 | D-01, D-03 | The system shall export a database snapshot to a compressed file with a version header. | Should | Round trip test: an imported snapshot equals the live extraction. |
 | FR-42 | T-11 | D-01, D-03, D-04 | The system shall compare a live database against a snapshot file without access to the database the snapshot came from. | Should | Comparing a fixture with its own snapshot reports no differences. |
 
@@ -126,6 +133,11 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-01 | WBS-4.2 | As a database developer, I want to drill down from a changed table to the columns and indexes that changed, so that I understand the change without reading the whole definition. | FR-15 |
 | SC-02 | WBS-4.3 | As a DBA, I want every object kind I use (indexes, permissions, partitions, extended properties and more) compared, so that nothing is deployed by surprise. | FR-16 |
 | SC-08 | WBS-5.1 | As a BI developer, I want a renamed column recognized as a rename candidate, so that I do not drop a column full of data by mistake. | FR-17 |
+| SC-04 | WBS-6.1 | As a DBA, I want the script to create objects in dependency order, so that it never fails on a missing object. | FR-18 |
+| SC-04 | WBS-6.2 | As a DBA, I want table, index, constraint and type changes scripted correctly, so that I can deploy them without writing DDL by hand. | FR-18, FR-22 |
+| SC-04 | WBS-6.3 | As a database developer, I want changed procedures, views, functions, roles and permissions scripted with ALTER where possible, so that dependent objects and permissions are kept. | FR-19 |
+| SC-04 | WBS-6.4 | As a DBA, I want the script in one transaction, data loss steps left out by default and only my selected objects included, so that a deployment is all or nothing and never destroys data unasked. | FR-20, FR-21, FR-22 |
+| SC-04 | WBS-6.5 | As a DBA, I want a rollback script and per object direction, so that I can undo a deployment or copy a fix back to development. | FR-23, FR-24 |
 | SC-07 | WBS-11.1 | As a database developer without production access, I want to compare against a production snapshot, so that I see what production will receive. | FR-41, FR-42 |
 
 <!-- pagebreak -->
@@ -135,6 +147,10 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 Use case names, actors and identifiers match Section 2 and Section 3.4. The diagrams use UML use case
 notation and were drawn with PlantUML. Their sources are kept next to the images in
 `docs/diagrams/requirements`, so they can be updated together with this document.
+
+#### 3.3.1 Whole-System Use Case Diagram
+
+![Whole-system use case diagram of SchemaDiff](images/requirements/uc-whole-system.png)
 
 ### 3.4 Use Cases
 
@@ -294,6 +310,51 @@ A comparison (UC-04) contains at least one removed and one added object or colum
 
 **Post-condition(s):**
 Renames are visible and no rename candidate is scripted as a drop without the user's decision.
+
+#### 3.4.7 UC-06 — Generate a deployment script
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-06 |
+| **Use case name** | Generate a deployment script |
+| **Goal / Purpose** | Get a script that brings the target in line with the source for the selected objects. |
+| **Actor(s)** | UT-01 Database Developer, UT-02 DBA (primary). |
+| **Related Project Plan task(s)** | T-06 |
+| **Related functional requirement(s)** | FR-18 to FR-24 |
+
+**Pre-condition(s):**
+A comparison with differences exists (UC-04).
+
+**Main success flow:**
+
+1. **Actor:** Selects the objects to deploy in the result tree.
+2. **Actor:** Requests the deployment script.
+3. **System:** Runs the risk analysis (UC-07) for the selected table changes.
+4. **System:** Orders the objects by dependency and section: types, tables, modules, security, permissions, settings.
+5. **System:** Writes CREATE for new objects, ALTER for changed modules and the table changes, leaving data loss steps out in safe mode.
+6. **System:** Wraps the script in a single transaction with XACT_ABORT ON and lists excluded steps in a header.
+7. **Actor:** Reviews, copies or saves the script, or executes it (UC-09).
+
+**Alternative flows:**
+
+- **A1 — Data loss allowed (branches from step 2):**
+  1. The actor turns safe mode off and confirms.
+  2. The system includes the data loss steps and marks them in the script.
+  3. The flow continues at step 4.
+- **A2 — Rollback script (branches from step 7):**
+  1. The actor asks for a rollback script.
+  2. The system generates the inverse script that restores the target schema.
+- **A3 — Mixed direction (branches from step 1):**
+  1. The actor sets the direction per object.
+  2. The system writes source to target and target to source changes in separate sections.
+
+**Exception / error flows:**
+
+- **E1 — Dependency cycle (occurs at step 4):** The system orders the objects in the cycle by name, writes a warning at the top of the script and lists the objects involved.
+- **E2 — Object kind cannot be scripted (occurs at step 5):** The object is listed as skipped with the reason and is not silently dropped from the script.
+
+**Post-condition(s):**
+A script exists that contains only the selected objects in a safe order, with every excluded or skipped step listed.
 
 #### 3.4.12 UC-11 — Compare against a snapshot
 
