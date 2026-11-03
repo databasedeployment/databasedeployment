@@ -74,6 +74,17 @@ Project Plan.
 | FR-22 | T-06 | D-02, D-04 | The system shall generate the script only for the objects the user selected. | Must | Selection tests: unselected objects never appear in the script. |
 | FR-23 | T-06 | D-02 | The system shall generate a rollback script that restores the original target schema. | Should | Apply then rollback on fixtures restores the original schema hash. |
 | FR-24 | T-06 | D-02 | The system shall generate a mixed direction script in which the direction (source to target or target to source) is chosen per object. | Could | Bidirectional tests on fixture pairs. |
+| FR-25 | T-07 | D-02, D-04 | The system shall classify each table change as safe, in place, blocked if the table is not empty, or data loss, using the row count of the target table. | Must | Risk tests for every data loss pattern, run on the layered fixture where one table has rows and one is empty. |
+| FR-26 | T-07 | D-02 | The system shall treat an unknown row count or an uncertain change as risky. | Must | A missing row count produces a blocking risk in tests. |
+| FR-27 | T-07 | D-02, D-04 | The system shall mark blocks that depend on existing data (new constraints, NOT NULL on a column) as conditional, separately from certain blocks. | Should | Conditional only flag tests. |
+| FR-28 | T-07 | D-02, D-03, D-04 | The system shall report the enabled or disabled state of triggers in source and target. | Should | Trigger report on the layered fixture shows the disabled trigger. |
+| FR-29 | T-08 | D-02, D-03 | The system shall save a comparison as a versioned migration file named `V###__description.sql` together with a matching rollback file. | Must | Naming and versioning tests. The pair applies and rolls back on fixtures. |
+| FR-30 | T-08 | D-02 | The system shall record applied migrations with checksums in a `__SchemaDiffMigrations` history table on the target. | Must | After applying, the history table contains the version, description and checksum. |
+| FR-31 | T-08 | D-02, D-03 | The system shall list pending migrations and apply them in version order. | Should | Apply pending test on a fixture with two pending files. |
+| FR-32 | T-08 | D-02, D-03 | The system shall detect drift between the migration history and the live schema. | Should | A manual change on the fixture after a migration is reported as drift. |
+| FR-33 | T-09 | D-02, D-04 | The system shall execute a generated script against the target, split at GO lines and run on a single connection so a transaction spans all batches. | Must | Splitter tests and an execution test on a fixture with a multi batch transaction. |
+| FR-34 | T-09 | D-02, D-04 | The system shall stream SSMS style messages during execution: PRINT output, rows affected and errors with message number, level, state and the line in the whole script. | Must | Execution tests compare the messages with SSMS for the same script. |
+| FR-35 | T-09 | D-02, D-04 | The system shall let the user cancel a running execution and shall roll back the open transaction. | Should | Cancel test leaves the fixture target unchanged. |
 | FR-41 | T-11 | D-01, D-03 | The system shall export a database snapshot to a compressed file with a version header. | Should | Round trip test: an imported snapshot equals the live extraction. |
 | FR-42 | T-11 | D-01, D-03, D-04 | The system shall compare a live database against a snapshot file without access to the database the snapshot came from. | Should | Comparing a fixture with its own snapshot reports no differences. |
 
@@ -117,6 +128,94 @@ production, which is why comparing against a snapshot (FR-42) matters for them.
 
 ### 3.2 User Scenarios
 
+**SC-01: Comparing development with test before a release**  
+**Persona:** P-01 Elif  
+**Related requirements:** FR-01 to FR-03, FR-06, FR-09, FR-11 to FR-15, FR-44 to FR-46
+
+Two days before a release Elif wants to know what is different between the development and test copies of
+the payments database. She opens SchemaDiff in her browser, picks the development server from her recent
+connections and selects the test server for the target. The progress bar starts moving immediately and the
+comparison finishes in a few seconds. The result tree shows four changed procedures and one new column.
+A procedure she only reformatted is not in the list. She opens each change side by side, confirms they are
+hers and moves on to generating the script.
+
+**SC-02: Checking deployment risk before production**  
+**Persona:** P-02 Murat  
+**Related requirements:** FR-21, FR-25 to FR-27
+
+Murat receives a script request that narrows a column on the transactions table. Before approving it he runs
+a comparison between test and production and opens the risk view. The change is flagged as data loss and the
+target table has 42 million rows, so the risk view marks it as blocking. Safe mode has already left the step
+out of the script. Murat sends the request back and asks for a migration that copies the data first.
+
+**SC-03: Comparing all warehouse layers every night**  
+**Persona:** P-03 Deniz  
+**Related requirements:** FR-36 to FR-40, FR-43
+
+Deniz has seven layers to keep in sync. She writes a jobs.json file with the development and production servers
+as defaults and one job per layer, then adds a nightly pipeline step that runs the compare command for all jobs.
+The jobs run in parallel and the step finishes in under a minute. When nothing differs the command exits with 0
+and nobody is disturbed. When a layer differs it exits with 1, the pipeline attaches the HTML report and Deniz
+gets a notification with the name of the layer.
+
+**SC-04: Deploying selected changes and watching the execution**  
+**Persona:** P-02 Murat  
+**Related requirements:** FR-18 to FR-22, FR-33 to FR-35
+
+Murat selects the approved objects in the tree and generates the deployment script. The script creates types
+first, then tables, then procedures, and wraps everything in one transaction. He runs it from the web interface
+and watches the messages arrive as in SSMS. One batch fails with a permission error that points to line 214 of
+the script. The transaction is rolled back, the target is unchanged, and he fixes the grant before trying again.
+
+**SC-05: Preparing release notes**  
+**Persona:** P-04 Selin  
+**Related requirements:** FR-43, FR-48, FR-49
+
+At the end of the sprint Selin opens the comparison between test and production and asks the assistant for a
+summary. It lists the new and changed objects in plain language and explains the one risky change. She exports
+the HTML report, pastes the summary into the change request and attaches the report.
+
+**SC-06: Saving and applying a migration**  
+**Persona:** P-01 Elif  
+**Related requirements:** FR-29 to FR-32
+
+Elif saves the approved comparison as migration V014 with a rollback file and commits both to the team
+repository. The next day she opens the test database, sees that V014 is pending and applies it. The history
+table now records V014 with its checksum. A week later someone changes a procedure on test by hand, and the
+drift check reports it before the next migration is applied.
+
+**SC-07: Comparing production through a snapshot**  
+**Persona:** P-02 Murat  
+**Related requirements:** FR-41, FR-42
+
+Developers are not allowed to connect to production. Murat exports a snapshot of the production database every
+Friday and shares the file. Developers compare their test database against the snapshot and see what production
+will receive, without any access to the production server.
+
+**SC-08: Finding a renamed column**  
+**Persona:** P-03 Deniz  
+**Related requirements:** FR-14, FR-15, FR-17
+
+A comparison of the staging layer shows one removed and one added column with the same type and position.
+SchemaDiff lists them as a rename candidate instead of a drop and an add. Deniz confirms it was a rename and
+writes the sp_rename call herself, so no data is lost.
+
+**SC-09: A change is verified before it is merged**  
+**Persona:** P-01 Elif (as a contributor to SchemaDiff)  
+**Related requirements:** FR-52 to FR-54
+
+Elif fixes a normalization bug in SchemaDiff itself and opens a pull request. The pipeline builds the solution,
+runs the unit tests and the fixture comparisons, and reports the result on the pull request. The merge button
+stays disabled until all checks pass and a teammate approves the change.
+
+**SC-10: Getting started with the documentation**  
+**Persona:** P-04 Selin  
+**Related requirements:** FR-55
+
+Selin wants to try the tool on her own machine. She follows the README, installs the release package, copies the
+sample jobs.json, fills in two servers and runs the compare command. The CLI reference explains the exit codes
+she needs for the pipeline she plans to set up.
+
 #### User Stories Linked to the Project Plan
 
 Every WBS activity of the Project Plan has a user story, or an explanation when the activity is purely technical.
@@ -138,6 +237,12 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-04 | WBS-6.3 | As a database developer, I want changed procedures, views, functions, roles and permissions scripted with ALTER where possible, so that dependent objects and permissions are kept. | FR-19 |
 | SC-04 | WBS-6.4 | As a DBA, I want the script in one transaction, data loss steps left out by default and only my selected objects included, so that a deployment is all or nothing and never destroys data unasked. | FR-20, FR-21, FR-22 |
 | SC-04 | WBS-6.5 | As a DBA, I want a rollback script and per object direction, so that I can undo a deployment or copy a fix back to development. | FR-23, FR-24 |
+| SC-02 | WBS-7.1 | As a DBA, I want each table change classified by risk with the target row count, so that I know before deployment whether it will be blocked or lose data. | FR-25, FR-26, FR-27 |
+| SC-02 | WBS-7.2 | As a DBA, I want to see which triggers are disabled in each environment, so that a forgotten disabled trigger does not surprise me after a release. | FR-28 |
+| SC-06 | WBS-8.1 | As a database developer, I want to save a comparison as a versioned migration with a rollback file, so that releases are repeatable and reviewable. | FR-29 |
+| SC-06 | WBS-8.2 | As a release manager, I want a history of applied migrations, a list of pending ones and a drift check, so that I know the exact state of every environment. | FR-30, FR-31, FR-32 |
+| SC-04 | WBS-9.1 | As a DBA, I want to run the generated script with GO batches and SSMS style messages, so that I do not have to copy it into another tool. | FR-33, FR-34 |
+| SC-04 | WBS-9.2 | As a DBA, I want to follow the execution live in the browser and stop it if needed, so that I stay in control of the deployment. | FR-34, FR-35 |
 | SC-07 | WBS-11.1 | As a database developer without production access, I want to compare against a production snapshot, so that I see what production will receive. | FR-41, FR-42 |
 
 <!-- pagebreak -->
@@ -355,6 +460,115 @@ A comparison with differences exists (UC-04).
 
 **Post-condition(s):**
 A script exists that contains only the selected objects in a safe order, with every excluded or skipped step listed.
+
+#### 3.4.8 UC-07 — Analyze deployment risk
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-07 |
+| **Use case name** | Analyze deployment risk |
+| **Goal / Purpose** | Know before deployment whether a table change will be blocked or will lose data. |
+| **Actor(s)** | UT-02 DBA (primary). |
+| **Related Project Plan task(s)** | T-07 |
+| **Related functional requirement(s)** | FR-25 to FR-28 |
+
+**Pre-condition(s):**
+A comparison with changed tables exists and the target row counts were read where permitted.
+
+**Main success flow:**
+
+1. **Actor:** Opens the risk view.
+2. **System:** Classifies every column and constraint change as safe, in place, blocked if not empty, or data loss.
+3. **System:** Combines the classification with the target row count and marks blocking changes.
+4. **System:** Marks blocks that depend on existing data as conditional.
+5. **Actor:** Reviews the findings and decides which changes to deploy.
+
+**Alternative flows:**
+
+- **A1 — Trigger status (branches from step 1):**
+  1. The actor opens the trigger report.
+  2. The system lists triggers whose enabled or disabled state differs between source and target.
+
+**Exception / error flows:**
+
+- **E1 — Row count unknown (occurs at step 3):** Without VIEW DATABASE STATE the row count is unknown and the system treats the table as filled, so the change is shown as blocking.
+
+**Post-condition(s):**
+Every risky table change is visible with its reason and row count, and safe mode excludes the data loss steps.
+
+#### 3.4.9 UC-08 — Create and apply a migration
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-08 |
+| **Use case name** | Create and apply a migration |
+| **Goal / Purpose** | Turn a reviewed comparison into a repeatable, versioned change and apply it to other environments. |
+| **Actor(s)** | UT-01 Database Developer, UT-04 Release Manager (primary). UT-06 SQL Server (secondary). |
+| **Related Project Plan task(s)** | T-08 |
+| **Related functional requirement(s)** | FR-29 to FR-32 |
+
+**Pre-condition(s):**
+A reviewed comparison exists (UC-04, UC-06) and a migrations folder is configured.
+
+**Main success flow:**
+
+1. **Actor:** Saves the comparison as a migration with a description.
+2. **System:** Writes `V###__description.sql` and its rollback file with the next version number.
+3. **Actor:** Selects a target database and lists pending migrations.
+4. **System:** Reads the `__SchemaDiffMigrations` history table and shows the versions not yet applied.
+5. **Actor:** Applies the pending migrations.
+6. **System:** Executes them in version order (UC-09) and records each version with its checksum.
+
+**Alternative flows:**
+
+- **A1 — Drift check (branches from step 3):**
+  1. The actor runs the drift check.
+  2. The system compares the live schema with the state expected after the last applied migration and lists the differences.
+
+**Exception / error flows:**
+
+- **E1 — Checksum mismatch (occurs at step 4):** An applied migration file was changed afterwards. The system stops and names the version, because applying on top of an edited history would hide the change.
+- **E2 — Migration fails (occurs at step 6):** The transaction of the failing migration is rolled back, it is not recorded, and the following migrations are not applied.
+
+**Post-condition(s):**
+The target is at the latest version and the history table matches the migration files.
+
+#### 3.4.10 UC-09 — Execute a deployment script
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-09 |
+| **Use case name** | Execute a deployment script |
+| **Goal / Purpose** | Run a generated script on the target and see exactly what happened. |
+| **Actor(s)** | UT-02 DBA (primary). UT-06 SQL Server (secondary). |
+| **Related Project Plan task(s)** | T-09 |
+| **Related functional requirement(s)** | FR-33 to FR-35 |
+
+**Pre-condition(s):**
+A deployment script exists (UC-06) and the login has the needed DDL permissions.
+
+**Main success flow:**
+
+1. **Actor:** Starts the execution from the web interface.
+2. **System:** Splits the script at GO lines and opens one connection.
+3. **System:** Runs the batches in order and streams PRINT output and rows affected messages.
+4. **System:** Reports progress as finished and total batches.
+5. **System:** After the last batch reports "Commands completed successfully" and the completion time.
+
+**Alternative flows:**
+
+- **A1 — Result sets (branches from step 3):**
+  1. A batch returns rows.
+  2. The system shows them as a grid, limited to 10,000 rows, and continues.
+
+**Exception / error flows:**
+
+- **E1 — Batch fails (occurs at step 3):** The system shows the error with message number, level, state and the line in the whole script, rolls back the open transaction and stops.
+- **E2 — User cancels (occurs at step 3):** The running batch is cancelled, the transaction is rolled back and the system reports that the run was stopped.
+- **E3 — Connection lost (occurs at step 2):** The system reports the error as a message and marks the run as failed. Nothing is retried automatically.
+
+**Post-condition(s):**
+Either every batch ran and the run is marked successful, or the target transaction was rolled back and the failure is reported with its line.
 
 #### 3.4.12 UC-11 — Compare against a snapshot
 
