@@ -111,6 +111,17 @@ Project Plan.
 | FR-54 | T-15 | D-06 | The system shall be benchmarked against DacFx on a database with 10,000+ objects and the result shall be recorded. | Should | BenchmarkDotNet report stored with the release. |
 | FR-55 | T-16 | D-07 | The system shall come with a README, a CLI reference, a web interface guide and configuration samples that let a new user install the tool, configure jobs.json and run a comparison. | Must | Two team members who did not write the guide follow it from a clean machine. |
 
+**Functional requirement notes:**
+
+- *Uncertain is never equal.* Any object whose definition cannot be read (FR-08) or whose comparison is not
+  reliable is reported as indeterminate. A silent "equal" is the most dangerous answer the tool could give.
+- *Read-only access.* Extraction (FR-06) only reads catalog views. The only operations that change a database
+  are script execution (FR-33) and applying migrations (FR-31), and both run only after an explicit user action.
+- *Round to the riskier side.* Risk analysis (FR-25, FR-26) assumes the worst case when information is missing,
+  because a false "risky" costs a minute of checking while a false "safe" can lose data.
+- *Shared engine.* The CLI (FR-36 to FR-40) and the web interface (FR-44 to FR-47) use the same Core library
+  (D-01, D-02), so both always give the same result for the same input.
+
 ### 2.2 Non-functional Requirements
 
 | Requirement ID | Quality attribute | Non-functional requirement (natural language) | Applies to | Verification / measurement |
@@ -129,6 +140,16 @@ Project Plan.
 | NFR-12 | Compatibility | The system shall support SQL Server 2016 or later and Azure SQL Database, and optional catalog queries shall degrade gracefully on older versions. | FR-06, FR-07 | Test matrix with SQL Server 2016 and LocalDB. Low privilege login fixture. |
 | NFR-13 | Portability | The CLI and Core shall run on Windows, macOS and Linux with .NET 8. Windows only features (DPAPI password storage, LocalDB fixtures) shall degrade without failing on other platforms. | D-01, D-03 | CI on Windows. Local runs on macOS. Password storage refuses to store instead of failing. |
 | NFR-14 | Privacy | AI features shall be optional, use a local model by default and receive schema metadata only. | FR-48 to FR-51 | Prompt logging test. All tests pass with AI disabled. |
+
+**Non-functional requirement notes / assumptions:**
+
+- "Local network" in NFR-04 means source, target and the tool in the same data center network. Over a VPN
+  the extraction queries dominate and the time grows with latency, the five times speed-up over DacFx still applies.
+- The 30 second target in NFR-04 is measured from the start of extraction to the end of the comparison on a
+  warm server, without script generation or AI.
+- Supported environments are Windows 10 or later for the full feature set, and macOS or Linux for the CLI and
+  Core without DPAPI password storage. The browser must be a current version of Edge, Chrome or Firefox.
+- Thresholds are the ones agreed in Project Plan Section 1.4. No other numeric target is assumed.
 
 ---
 
@@ -312,6 +333,15 @@ notation and were drawn with PlantUML. Their sources are kept next to the images
 
 ![Whole-system use case diagram of SchemaDiff](images/requirements/uc-whole-system.png)
 
+**Whole-system diagram notes:**
+
+The four human actors (UT-01 to UT-04) start the use cases on the left. The CI/CD pipeline (UT-05) is a
+primary actor too, because it starts comparisons and reports without a person. SQL Server (UT-06) and the AI
+provider (UT-07) are secondary actors that the system calls. UC-02 Extract a schema is included by UC-04 and
+UC-11 (see 3.3.3), and UC-07 Analyze deployment risk is included by UC-06 so that safe mode always has a risk
+classification. Every task of the Project Plan appears as one use case, which is checked in the coverage
+matrix in 3.4.1.
+
 #### 3.3.2 Functionality-Specific Use Case Diagram — Connection Management
 
 ![Connection Management use case diagram](images/requirements/uc-connection.png)
@@ -378,6 +408,31 @@ notation and were drawn with PlantUML. Their sources are kept next to the images
 ### 3.4 Use Cases
 
 Every task of the Project Plan has at least one detailed use case below.
+
+#### 3.4.1 Use Case Coverage Matrix
+
+| Project Plan task ID | Functional requirement ID(s) | Use case ID(s) | Scenario ID(s) |
+|---|---|---|---|
+| T-01 | FR-01 to FR-05 | UC-01 | SC-01 |
+| T-02 | FR-06 to FR-10 | UC-02 | SC-01, SC-02 |
+| T-03 | FR-11 to FR-13 | UC-03 | SC-01 |
+| T-04 | FR-14 to FR-16 | UC-04 | SC-01 |
+| T-05 | FR-17 | UC-05 | SC-08 |
+| T-06 | FR-18 to FR-24 | UC-06 | SC-04 |
+| T-07 | FR-25 to FR-28 | UC-07 | SC-02 |
+| T-08 | FR-29 to FR-32 | UC-08 | SC-06 |
+| T-09 | FR-33 to FR-35 | UC-09 | SC-04 |
+| T-10 | FR-36 to FR-40 | UC-10 | SC-03 |
+| T-11 | FR-41, FR-42 | UC-11 | SC-07 |
+| T-12 | FR-43 | UC-12 | SC-03, SC-05 |
+| T-13 | FR-44 to FR-47 | UC-13 | SC-01 |
+| T-14 | FR-48 to FR-51 | UC-14 | SC-05 |
+| T-15 | FR-52 to FR-54 | UC-15 | SC-09 |
+| T-16 | FR-55 | UC-16 | SC-10 |
+
+All sixteen tasks of Project Plan Section 1.3 are covered. Optional scope items of the plan (cloud AI provider,
+snapshot against snapshot, theme switch, release binaries) are not specified as separate requirements and are
+only delivered if the critical path keeps its schedule.
 
 #### 3.4.2 UC-01 — Connect to a database
 
