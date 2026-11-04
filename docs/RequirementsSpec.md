@@ -319,6 +319,62 @@ notation and were drawn with PlantUML. Their sources are kept next to the images
 **Functionality covered:** T-01 / FR-01 to FR-05 / UC-01  
 **Diagram notes:** Testing the connection and listing databases are part of every connect. Reusing a recent connection and storing the password are optional extensions chosen by the user.
 
+#### 3.3.3 Functionality-Specific Use Case Diagram — Extraction and Comparison
+
+![Extraction and Comparison use case diagram](images/requirements/uc-comparison.png)
+
+**Functionality covered:** T-02, T-03, T-04, T-05 / FR-06 to FR-17 / UC-02 to UC-05  
+**Diagram notes:** Comparing always extracts both schemas. Options and the rename review are optional steps around a comparison, and the coverage probe can be run before an extraction to check permissions.
+
+#### 3.3.4 Functionality-Specific Use Case Diagram — Deployment Script, Risk and Execution
+
+![Deployment Script, Risk and Execution use case diagram](images/requirements/uc-deployment.png)
+
+**Functionality covered:** T-06, T-07, T-09 / FR-18 to FR-28, FR-33 to FR-35 / UC-06, UC-07, UC-09  
+**Diagram notes:** Script generation includes the risk analysis because safe mode needs it. The rollback script and the trigger report are optional. Execution is started by the DBA and runs on the target server.
+
+#### 3.3.5 Functionality-Specific Use Case Diagram — Migrations
+
+![Migrations use case diagram](images/requirements/uc-migrations.png)
+
+**Functionality covered:** T-08 / FR-29 to FR-32 / UC-08  
+**Diagram notes:** A migration is always saved as a versioned pair of files. Applying and drift detection read and write the history table on the target.
+
+#### 3.3.6 Functionality-Specific Use Case Diagram — Command Line and Reports
+
+![Command Line and Reports use case diagram](images/requirements/uc-cli-reports.png)
+
+**Functionality covered:** T-10, T-12 / FR-36 to FR-40, FR-43 / UC-10, UC-12  
+**Diagram notes:** Every CLI run selects jobs, by expression or interactively. Exporting a report can follow a CLI run or a web comparison.
+
+#### 3.3.7 Functionality-Specific Use Case Diagram — Snapshots
+
+![Snapshots use case diagram](images/requirements/uc-snapshots.png)
+
+**Functionality covered:** T-11 / FR-41, FR-42 / UC-11  
+**Diagram notes:** The DBA exports the snapshot from a database the developer cannot reach. The developer then compares a live database against the file.
+
+#### 3.3.8 Functionality-Specific Use Case Diagram — Web Interface
+
+![Web Interface use case diagram](images/requirements/uc-web.png)
+
+**Functionality covered:** T-13 / FR-44 to FR-47 / UC-13  
+**Diagram notes:** Progress and the side-by-side view are part of every review in the browser. Settings and language are changed when needed.
+
+#### 3.3.9 Functionality-Specific Use Case Diagram — AI Assistant
+
+![AI Assistant use case diagram](images/requirements/uc-ai.png)
+
+**Functionality covered:** T-14 / FR-48 to FR-51 / UC-14  
+**Diagram notes:** The assistant is optional. Each output is a separate request that sends schema metadata only.
+
+#### 3.3.10 Functionality-Specific Use Case Diagram — Quality and Documentation
+
+![Quality and Documentation use case diagram](images/requirements/uc-quality-docs.png)
+
+**Functionality covered:** T-15, T-16 / FR-52 to FR-55 / UC-15, UC-16  
+**Diagram notes:** Contributors and the pipeline verify every change against the fixture databases. New users start from the documentation.
+
 ### 3.4 Use Cases
 
 Every task of the Project Plan has at least one detailed use case below.

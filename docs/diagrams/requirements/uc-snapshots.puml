@@ -1,0 +1,17 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-02\nDBA" as DBA
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-06\nSQL Server" as SQL
+rectangle "Snapshots" {
+  usecase "Export a snapshot" as EX
+  usecase "UC-11 Compare against a snapshot" as UC11
+  usecase "UC-02 Extract a schema" as UC02
+}
+DBA --> EX
+DEV --> UC11
+EX ..> UC02 : <<include>>
+UC11 ..> UC02 : <<include>>
+UC02 --> SQL
+@enduml
