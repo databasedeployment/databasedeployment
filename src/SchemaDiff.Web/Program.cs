@@ -3,7 +3,7 @@ using SchemaDiff.Core.Connections;
 using SchemaDiff.Web;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://127.0.0.1:5290");
+builder.WebHost.UseUrls(HostSettings.ListenUrl(args));
 builder.Services.AddSingleton(_ => RecentConnections.ForCurrentUser());
 
 var app = builder.Build();
