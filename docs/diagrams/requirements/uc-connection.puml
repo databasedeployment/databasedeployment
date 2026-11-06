@@ -1,0 +1,22 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-02\nDBA" as DBA
+actor "UT-06\nSQL Server" as SQL
+rectangle "Connection management" {
+  usecase "UC-01 Connect to a database" as UC01
+  usecase "Test connection" as T
+  usecase "List databases" as L
+  usecase "Reuse a recent connection" as R
+  usecase "Store password with DPAPI" as P
+}
+DEV --> UC01
+DBA --> UC01
+UC01 ..> T : <<include>>
+UC01 ..> L : <<include>>
+R ..> UC01 : <<extend>>
+P ..> UC01 : <<extend>>
+T --> SQL
+L --> SQL
+@enduml

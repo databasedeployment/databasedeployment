@@ -1,0 +1,16 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-05\nCI/CD pipeline" as CI
+actor "UT-04\nRelease Manager" as RM
+rectangle "Quality and documentation" {
+  usecase "UC-15 Verify a change in the pipeline" as UC15
+  usecase "Run fixture comparisons" as FX
+  usecase "UC-16 Get started with the documentation" as UC16
+}
+DEV --> UC15
+CI --> UC15
+RM --> UC16
+UC15 ..> FX : <<include>>
+@enduml
