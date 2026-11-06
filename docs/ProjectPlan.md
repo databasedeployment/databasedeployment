@@ -12,7 +12,7 @@
 | **Product Owner** | İsmail Yeşilyurt (150220009) |
 | **Instructors** | Prof. Dr. Tolga Ovatman, Assoc. Prof. Dr. Ayşe Tosun |
 | **Submission date** | 2026-10-19 |
-| **Document version** | 1.1 |
+| **Document version** | 1.2 |
 
 ---
 
@@ -65,7 +65,7 @@
 - **Team:** six students with a baseline allocation of 0.5 FTE (≈20 h/week) each; up to 0.75 FTE in selected weeks from week 6 on, after the midterm (Mon 23 Nov, after 17:00). Each member has one technical and one management duty (Section 4.1).
 - **AI agents:** AI coding agents are used as team members under the course policy: their work, effort and the human review effort are reported, Gen-AI error types are logged, and no member or agent commits directly to main (Sections 3 and 4.3).
 - **Process:** test-first implementation, GitHub branches + pull requests, GitHub Actions CI and a GitHub Projects board for task tracking; customer (TA) meetings are minuted and needs confirmed before moving on.
-- **Technology:** .NET 8 / C# 12, ASP.NET Core Minimal API + SSE, Microsoft.Data.SqlClient, ScriptDom, System.IO.Hashing, DPAPI (Windows), vanilla JavaScript SPA, Microsoft.Extensions.AI with Ollama; target SQL Server 2016+ / Azure SQL; tests on SQL Server LocalDB.
+- **Technology:** .NET 8 / C# 12, ASP.NET Core Minimal API + SSE, Microsoft.Data.SqlClient, ScriptDom, System.IO.Hashing, DPAPI (Windows), vanilla JavaScript SPA, Microsoft.Extensions.AI with Ollama; target SQL Server 2016+ / Azure SQL; tests on SQL Server LocalDB in CI, with the other targets covered by WBS-15.8.
 - **Budget:** zero; only free/open-source tools, LocalDB/Developer edition and local open-weight models.
 - **Access:** no production databases are used; all testing uses scripted fixture databases.
 
@@ -111,11 +111,11 @@ Every task is mapped to at least one deliverable.
 | Quality attribute | Requirement / concern | How it will be assessed |
 |---|---|---|
 | Security | Passwords stored only with Windows DPAPI; extraction uses read-only catalog queries; web API bound to 127.0.0.1 with per-tab sessions; AI prompts contain schema metadata only, never row data; deployment runs only after explicit user action. | Unit test scanning config/logs/reports/prompts for secrets; code review checklist; manual check that the server refuses non-loopback connections. |
-| Performance | Full comparison of a 10,000+ object database pair in seconds (target ≤ 30 s on a local network, ≥ 5× faster than DacFx); UI shows first progress within 1 s via SSE. | BenchmarkDotNet run against DacFx on a generated 10k-object database (WBS-15.5); timing log in E2E tests. |
-| Usability | Layout familiar to SSDT users (source ⇄ target, grouped tree, side-by-side diff); full EN/TR localization; CLI with help text and clear exit codes. | Walk-through with 3 external users completing compare → script tasks without help; localization completeness check. |
+| Performance | Full comparison of a 10,000+ object database pair in seconds (target ≤ 30 s on a local network, ≥ 5× faster than DacFx); UI shows first progress within 1 s via SSE. | First timing on a generated 10k-object database in week 6 (WBS-15.6); BenchmarkDotNet run against DacFx in week 9 (WBS-15.5); timing log in E2E tests. |
+| Usability | Layout familiar to SSDT users (source ⇄ target, grouped tree, side-by-side diff); full EN/TR localization; CLI with help text and clear exit codes. | Walk-through with 3 external users completing compare → script tasks without help (WBS-15.8); localization completeness check. |
 | Reliability | Unreadable objects are "uncertain", never "equal"; generated scripts run in one XACT_ABORT transaction; rollback scripts restore the original schema; uncertain risks rounded to the riskier side. | Coverage-matrix test; apply → rollback round-trip tests on fixtures; fault-injection tests for lost connections. |
 | Maintainability | Modular Core / CLI / Web / AI projects behind agreed interfaces; ≥ 80% line coverage on Core. | CI coverage report; pull-request reviews. |
-| Compatibility | SQL Server 2016+ and Azure SQL; optional queries degrade gracefully on older versions or missing permissions. | Test matrix with SQL Server 2016 and LocalDB; low-privilege login fixture. |
+| Compatibility | SQL Server 2016+ and Azure SQL; optional queries degrade gracefully on older versions or missing permissions. | WBS-15.8: test run on SQL Server 2016 on a Windows machine (no Linux Docker image exists for 2016) and on LocalDB, low-privilege login fixture, Azure SQL check on the free offer. |
 
 ---
 
@@ -170,7 +170,7 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 | WBS-16.1 | T-16 | User & developer documentation | README, CLI reference, web UI guide, architecture/module docs, configuration samples; peer-reviewed. | S |
 | WBS-16.2 | T-16 | Demo scenario & presentation material | Self-contained release build, scripted demo on fixture databases, presentation slides. | T |
 
-**WBS decomposition notes.** Activities were cut so that each one has a single clear owner, a verifiable completion condition and a size of at most L (no activity exceeds 2 man-weeks, which keeps progress visible week by week). WBS-2.1 (domain model and module contracts) is done first by the four core developers together; it freezes the snapshot and diff-result interfaces so that extraction, comparison, script generation, risk analysis, CLI and web work can proceed in parallel against fixture data instead of waiting for each other. Object coverage is split into "core" classes (WBS-2.2) and the remaining classes (WBS-4.3) so that the end-to-end pipeline works early. Script generation is the longest chain of dependent work (framework → table/type → module/security → transaction/safe mode → rollback). Testing is both embedded (each activity ships its unit tests) and explicit (fixtures, coverage matrix, end-to-end, benchmark).
+**WBS decomposition notes.** Activities were cut so that each one has a single clear owner, a verifiable completion condition and a size of at most L (no activity exceeds 2 man-weeks, which keeps progress visible week by week). WBS-2.1 (domain model and module contracts) is done early by the four core developers together; it sets a first baseline of the snapshot and diff-result interfaces so that extraction, comparison, script generation, risk analysis, CLI and web work can proceed in parallel against fixture data instead of waiting for each other. The baseline is not final: WBS-2.1 starts before the requirements are confirmed, so the contracts are reviewed against the requirements at the checkpoint in week 4 (Section 5.3), and any later change goes through a reviewed pull request that names the affected activities. Object coverage is split into "core" classes (WBS-2.2) and the remaining classes (WBS-4.3) so that the end-to-end pipeline works early. Script generation is the longest chain of dependent work (framework → table/type → module/security → transaction/safe mode → rollback). Testing is both embedded (each activity ships its unit tests) and explicit (fixtures and their update, coverage matrix, first end-to-end pass, assessment of the non-functional targets, final end-to-end run, early timing and benchmark).
 
 *Course guideline note: user stories for these subtasks will be written in the separate Requirements Specification document; this project plan defines and sizes the subtasks.*
 
@@ -421,10 +421,11 @@ A second, converging zero-float chain feeds WBS-6.4: `WBS-2.1 → WBS-3.1 → WB
 | 26 Oct (W2) | Customer Meeting 2 on Requirements | Use cases confirmed with TAs before WBS-2.2/6.1 build on them |
 | 02 Nov (W3) | Peer Scoring 1 | — |
 | 08 Nov (W3) | Requirements Specification | — |
+| 09 Nov (W4) | Contract review checkpoint | WBS-2.1 baseline checked against the submitted Requirements Specification; changes go through a reviewed PR |
 | 23 Nov (W6) | Requirements Analysis report; Midterm (after 17:00) | Peak allocations start only after the midterm |
 | 30 Nov (W7) | Peer Scoring 2 | — |
-| 07 Dec (W8) | Design Specification; Customer Meeting 3 on Design | Design matches the contracts frozen in WBS-2.1 |
-| 21 Dec (W10) | Test Specification; Customer Meeting 4 on Tests and Final Deliverables | E2E results from WBS-15.4 presented |
+| 07 Dec (W8) | Design Specification; Customer Meeting 3 on Design | Design matches the contracts as reviewed at the week 4 checkpoint |
+| 21 Dec (W10) | Test Specification; Customer Meeting 4 on Tests and Final Deliverables | First end-to-end pass (WBS-15.9), cross-module tests (WBS-15.3), assessment (WBS-15.8) and benchmark (WBS-15.5) results presented; the final E2E run (WBS-15.4) follows in W10 |
 | 25 Dec (W10) | Code freeze / codebase deadline | All WBS activities finished |
 | 26 Dec (Sat) | Final demo | Demo scenario from WBS-16.2 |
 | 28 Dec | Final presentation; Peer Scoring 3 | — |
@@ -441,10 +442,10 @@ Probability and impact are scored from 1 (lowest) to 5 (highest). The register i
 |---|---|---|---|---|---|
 | R-01 | Stored connection passwords leak (DPAPI misuse, passwords in logs, reports or AI prompts). | 1 | 4 | 4 | WBS-1.2, WBS-13.1, WBS-14.2 |
 | R-02 | Some members cannot run Windows-only parts (DPAPI, LocalDB) on their machines. | 2 | 2 | 4 | WBS-1.2, WBS-15.2 |
-| R-03 | Restricted permissions (no VIEW DEFINITION) or old versions produce incomplete or misleading results. | 2 | 3 | 6 | WBS-2.4, WBS-15.2 |
+| R-03 | Restricted permissions (no VIEW DEFINITION) or old versions produce incomplete or misleading results. | 2 | 3 | 6 | WBS-2.4, WBS-15.2, WBS-15.8 |
 | R-04 | Risk analyzer misses a data-loss case, so an unsafe step reaches the deployment script. | 2 | 5 | 10 | WBS-7.1, WBS-6.4 |
 | R-05 | Local LLM is too slow or low-quality on members' laptops. | 3 | 2 | 6 | WBS-14.1, WBS-14.2 |
-| R-06 | Performance target (seconds on 10,000+ objects) is not met. | 3 | 3 | 9 | WBS-2.2, WBS-2.3, WBS-15.5 |
+| R-06 | Performance target (seconds on 10,000+ objects) is not met. | 3 | 3 | 9 | WBS-2.2, WBS-2.3, WBS-15.5, WBS-15.6 |
 | R-07 | AI coding-agent output contains subtle defects or invented APIs; over-reliance reduces understanding. | 3 | 3 | 9 | WBS-3.1, WBS-6.2, WBS-6.3, WBS-15.3 |
 | R-08 | ScriptDom normalization edge cases cause false differences or hide real ones. | 3 | 4 | 12 | WBS-3.1, WBS-3.2, WBS-4.1 |
 | R-09 | Module interfaces drift, causing late integration failures between core, CLI, web and AI. | 3 | 4 | 12 | WBS-2.1, WBS-13.2, WBS-15.4 |
@@ -468,13 +469,13 @@ Probability and impact are scored from 1 (lowest) to 5 (highest). The register i
 |---|---|---|---|---|
 | R-01 | WBS-1.2, WBS-13.1, WBS-14.2 | DPAPI CurrentUser scope only; secret-redaction helper used by logging, reports and prompts; unit test scans outputs for secrets; API bound to 127.0.0.1. | Enes Birol Tatlı (EBT) | Rotate affected test credentials, patch and add a regression test; disable password saving until fixed. |
 | R-02 | WBS-1.2, WBS-15.2 | Fixture scripts also run on SQL Server in Docker; DPAPI behind an interface with a test double; CI runs on windows-latest. | Mustafa Talha Yıldırım (MTY) | Pair the affected member with a Windows user for platform-specific work; use CI for Windows-only tests. |
-| R-03 | WBS-2.4, WBS-15.2 | Low-privilege fixture login and SQL Server 2016 instance in the test matrix; coverage probe reports skipped classes explicitly. | Ömer Faruk Yılmaz (ÖFY) | Mark affected objects "uncertain" and surface them in UI/CLI; document required permissions. |
+| R-03 | WBS-2.4, WBS-15.2, WBS-15.8 | Low-privilege fixture login and SQL Server 2016 instance on a Windows machine, both run in WBS-15.8; coverage probe reports skipped classes explicitly. | Ömer Faruk Yılmaz (ÖFY) | Mark affected objects "uncertain" and surface them in UI/CLI; document required permissions. |
 | R-04 | WBS-7.1, WBS-6.4 | Catalogue of data-loss patterns reviewed against SSDT warnings; uncertain cases rounded to riskier side; safe mode on by default; dedicated test per pattern. | Mustafa Talha Yıldırım (MTY) | Hot-fix the classifier, add the case to the test catalogue, re-run E2E; release note warns users. |
 | R-05 | WBS-14.1, WBS-14.2 | Small quantized code model as default; strict JSON-schema prompts; provider abstraction allows switching models. | Enes Birol Tatlı (EBT) | Use optional OpenAI-compatible provider for the demo; AI stays optional so core flow is unaffected. |
-| R-06 | WBS-2.2, WBS-2.3, WBS-15.5 | Early timing on a generated 10k-object database (week 5); query-per-class design; tunable concurrency; profiling with BenchmarkDotNet. | Ömer Faruk Yılmaz (ÖFY) | Optimize top queries and hashing hot spots; report achieved speed-up vs DacFx honestly. |
+| R-06 | WBS-2.2, WBS-2.3, WBS-15.5, WBS-15.6 | Early timing on a generated 10k-object database in week 6, as soon as the diff engine exists (WBS-15.6); query-per-class design; tunable concurrency; profiling with BenchmarkDotNet. | Ömer Faruk Yılmaz (ÖFY) | Optimize top queries and hashing hot spots; report achieved speed-up vs DacFx honestly. |
 | R-07 | WBS-3.1, WBS-6.2, WBS-6.3, WBS-15.3 | Every AI-assisted change goes through pull-request review by a second member plus tests; agents never commit directly to main. | Mehmet Elhan (ME) | Revert the change, rewrite the affected part manually, extend tests for the failure mode. |
 | R-08 | WBS-3.1, WBS-3.2, WBS-4.1 | Golden-file corpus of tricky T-SQL (comments in strings, quoted identifiers, case-sensitive collations); normalization options default to conservative. | Mücahit Günay (MG) | Fall back to raw-text hashing for the affected object kind and flag it; fix normalizer afterwards. |
-| R-09 | WBS-2.1, WBS-13.2, WBS-15.4 | Contracts frozen in WBS-2.1 and changed only by reviewed PR; integration tests in CI from week 3; weekly integration build. | Mehmet Elhan (ME) | Dedicated integration day; PM re-plans affected activities using available float. |
+| R-09 | WBS-2.1, WBS-13.2, WBS-15.4 | Contracts baselined in WBS-2.1, reviewed at the week 4 checkpoint and changed only by reviewed PR; integration tests in CI from week 3; weekly integration build. | Mehmet Elhan (ME) | Dedicated integration day; PM re-plans affected activities using available float. |
 | R-10 | WBS-6.1, WBS-6.3, WBS-6.4 | Dependency graph from sys.sql_expression_dependencies plus type rules; every generated script executed on a fixture target in tests. | İsmail Yeşilyurt (İY) | XACT_ABORT transaction rolls back automatically; fix ordering rule and add failing case to tests. |
 | R-11 | WBS-6.1, WBS-6.2, WBS-6.3, WBS-6.4, WBS-6.5, WBS-7.1 | Baseline allocation kept at 0.5 FTE with peaks only after midterms; each critical activity has a named backup member; weekly progress check. | Mehmet Elhan (ME) | Backup member takes over; move optional-scope items out; use float of non-critical activities. |
 | R-12 | WBS-4.3, WBS-6.2, WBS-6.3 | Coverage matrix prioritizes common object kinds first; rare kinds may be "detected and reported" instead of scripted; optional scope kept separate. | İsmail Yeşilyurt (İY) | Ship rare kinds as report-only, documented in coverage matrix; defer optional scope. |
@@ -487,3 +488,4 @@ The Project Manager reviews the register in the weekly meeting; scores are updat
 |---|---|---|
 | 1.0 | 2026-10-19 | First submitted version. |
 | 1.1 | 2026-11-02 | Requirements Specification deadline corrected to 08.11.2026 as announced on Ninova. No change to scope, WBS, estimates or schedule. |
+| 1.2 | 2026-11-06 | Revision after the TA review. WBS-15.1 is now the first activity. WBS-4.2 consumers corrected, drill-down moved to WBS-13.3. WBS-6.5 shortened to W9 so that WBS-15.4 runs on finished rollback work. Week 10 relieved. Contracts are a baseline with a checkpoint in W4. New activities WBS-15.6 to WBS-15.9, WBS-15.5 reduced, total 31.75 man-weeks. Finish date unchanged. PERT and Gantt redrawn. |
