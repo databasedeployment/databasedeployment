@@ -128,14 +128,14 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 | WBS-1.1 | T-01 | Connection factory & connection test | SqlClient builder (Windows/SQL auth, encrypt, trust certificate), database list, connection test; tests pass on LocalDB. | S |
 | WBS-1.2 | T-01 | Credential store & recent connections | Passwords encrypted with Windows DPAPI; recent connections persisted; test proves no plaintext on disk. | S |
 | WBS-1.3 | T-01 | Connect dialog (UI) | SSDT-style dialog: server, authentication, encrypt/trust, database drop-down, test button, recent connections. | S |
-| WBS-2.1 | T-02 | Domain model & module contracts | Object-kind catalogue, object/sub-part identity keys, snapshot and diff-result DTOs, extractor/comparer/generator/risk interfaces merged. | M |
+| WBS-2.1 | T-02 | Domain model & module contracts | Object-kind catalogue, object/sub-part identity keys, snapshot and diff-result DTOs, extractor/comparer/generator/risk interfaces merged as the first baseline. | M |
 | WBS-2.2 | T-02 | Core catalog queries | Bulk read-only queries for schemas, tables, columns, defaults, constraints, indexes, views, procedures, functions, triggers mapped to the model. | M |
 | WBS-2.3 | T-02 | Parallel extraction runner | Parallel connections under a global concurrency limit with cancellation and progress events; fault-injection tests. | S |
 | WBS-2.4 | T-02 | Permission checks & coverage probe | VIEW DEFINITION detection → "uncertain"; optional queries degrade on old versions/missing permissions; coverage probe report. | M |
 | WBS-3.1 | T-03 | ScriptDom normalizer | Token-based normalization with whitespace/comment/case options; golden-file tests for formatting-only differences. | M |
 | WBS-3.2 | T-03 | XxHash128 object & sub-part hashing | Deterministic hashes per object and per sub-part (columns, indexes, constraints, body, permissions); stability tests. | S |
 | WBS-4.1 | T-04 | Hash-based diff engine | Add/Delete/Change classification of two snapshots; "uncertain" never equal; tests on fixture pairs. | M |
-| WBS-4.2 | T-04 | Change tree & sub-changes | Hierarchical change tree with sub-changes (Add Column, Alter Column, Drop Index…) consumed by UI, CLI and generators. | S |
+| WBS-4.2 | T-04 | Change tree & sub-changes | Hierarchical change tree with sub-changes (Add Column, Alter Column, Drop Index…) consumed by the web drill-down (WBS-13.3) and the reports (WBS-12.1). Generators and the risk analyzer read the comparison result and the snapshot sub-parts directly. | S |
 | WBS-4.3 | T-04 | Broad object coverage | Remaining classes (special indexes, sequences, synonyms, partitions, XML schema collections, roles, permissions, ext. properties, plan guides, DB scoped configs) extracted and compared. | L |
 | WBS-5.1 | T-05 | Rename detection | Removed+added pairs with identical structural hash reported as rename candidates (no sp_rename generated). | S |
 | WBS-6.1 | T-06 | Script framework & dependency ordering | Script builder and dependency graph ordering types → tables → modules → roles → permissions/ext. properties → settings; ordering tests. | M |
@@ -154,15 +154,19 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 | WBS-11.1 | T-11 | Snapshot export/import & offline compare | Compressed JSON snapshot with version header; round-trip equals live extraction; live-vs-snapshot compare in CLI and UI. | M |
 | WBS-12.1 | T-12 | HTML & JSON reports | Standalone HTML and JSON export of comparison and risk results from CLI and UI. | S |
 | WBS-13.1 | T-13 | Minimal API & SSE backend | Minimal API on 127.0.0.1, compare/progress endpoints over SSE, per-tab session store disposed via sendBeacon. | M |
-| WBS-13.2 | T-13 | Compare view (SPA) | Source⇄target selectors, grouped result tree with checkboxes, side-by-side definitions with diff navigation, live SSE progress. | M |
-| WBS-13.3 | T-13 | Risk view, settings & EN/TR localization | Deployment risk view, comparison/normalization settings panel, complete EN/TR resource strings. | M |
+| WBS-13.2 | T-13 | Compare view (SPA) | Source⇄target selectors, grouped object-level result tree with checkboxes, side-by-side definitions with diff navigation, live SSE progress. | M |
+| WBS-13.3 | T-13 | Risk view, sub-change drill-down, settings & EN/TR localization | Deployment risk view, sub-change drill-down from the change tree, comparison/normalization settings panel, complete EN/TR resource strings. | M |
 | WBS-14.1 | T-14 | AI provider abstraction & Ollama | Microsoft.Extensions.AI client, local Ollama default, optional OpenAI-compatible provider; graceful when disabled. | T |
 | WBS-14.2 | T-14 | AI release notes, risk explanations & review | Prompt templates on JSON diff/risk metadata (no row data), structured output parsing, UI panel, script review comments. | M |
-| WBS-15.1 | T-15 | Repository, solution skeleton & CI | GitHub repo, .NET 8 solution (Core/Cli/Web/Tests), conventions; GitHub Actions build+test workflow green on main. | S |
-| WBS-15.2 | T-15 | Test fixture databases | Scripted dev/prod/layered (staging-core-mart) LocalDB fixtures with documented differences covering every object kind. | S |
+| WBS-15.1 | T-15 | Repository, solution skeleton & CI | GitHub repo, .NET 8 solution (Core/Cli/Web/Tests), conventions; GitHub Actions build+test workflow green on main. First activity of the project, all code builds on it. | S |
+| WBS-15.2 | T-15 | Test fixture databases | Scripted dev/prod/layered (staging-core-mart) LocalDB fixtures with documented differences covering the core object kinds, later kinds are added by WBS-15.7. | S |
 | WBS-15.3 | T-15 | Coverage-matrix & cross-module tests | Coverage-matrix test (each object kind scripted or reported); normalization/comparison/risk/script suites; ≥80% Core coverage. | M |
-| WBS-15.4 | T-15 | End-to-end tests & stabilization | CLI and web E2E runs on dev/prod/layered fixtures; all high-severity bugs closed; CI green. | M |
-| WBS-15.5 | T-15 | Performance benchmark vs DacFx | BenchmarkDotNet run on a 10,000+ object database; results documented against the performance target. | S |
+| WBS-15.4 | T-15 | End-to-end tests & stabilization | Full CLI and web E2E runs on dev/prod/layered fixtures including apply → rollback; all high-severity bugs closed; CI green. | M |
+| WBS-15.5 | T-15 | Performance benchmark vs DacFx | BenchmarkDotNet run on the WBS-15.6 database; results documented against the performance target. | T |
+| WBS-15.6 | T-15 | 10,000-object test database & early timing | Scripted generator for a 10,000+ object database; first timing of extraction and comparison recorded, so that a miss can still be acted on. | T |
+| WBS-15.7 | T-15 | Fixture update for new object kinds | Fixtures extended with the object kinds added by WBS-4.3 and the generators; expected differences updated. | T |
+| WBS-15.8 | T-15 | Compatibility, permission & usability assessment | Test run on SQL Server 2016 on a Windows machine and on LocalDB, low-privilege login run, Azure SQL check, walkthrough with 3 external users; results recorded. | T |
+| WBS-15.9 | T-15 | First end-to-end pass | CLI compare → script → apply on the fixtures; results reported in the Test Specification on 21.12. | T |
 | WBS-16.1 | T-16 | User & developer documentation | README, CLI reference, web UI guide, architecture/module docs, configuration samples; peer-reviewed. | S |
 | WBS-16.2 | T-16 | Demo scenario & presentation material | Self-contained release build, scripted demo on fixture databases, presentation slides. | T |
 
@@ -213,10 +217,14 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 | WBS-15.2 | S | 0.5 | Small: one component, known APIs |
 | WBS-15.3 | M | 1 | Medium: several components or new API |
 | WBS-15.4 | M | 1 | Four members test in parallel in the final week |
-| WBS-15.5 | S | 0.5 | Small: one component, known APIs |
+| WBS-15.5 | T | 0.25 | Tiny: the database comes from WBS-15.6 |
+| WBS-15.6 | T | 0.25 | Tiny: script generator and one timing run |
+| WBS-15.7 | T | 0.25 | Tiny: new kinds added to existing fixture scripts |
+| WBS-15.8 | T | 0.25 | Tiny: runs existing tests on other targets, short walkthrough |
+| WBS-15.9 | T | 0.25 | Tiny: one scripted run on existing fixtures |
 | WBS-16.1 | S | 0.5 | Small: one component, known APIs |
 | WBS-16.2 | T | 0.25 | Tiny: small, well-understood change |
-| **Total** | — | **31** | 40 activities |
+| **Total** | — | **31.75** | 44 activities |
 
 **Estimation method.** Each activity was first sized relative to the others (T-shirt sizing in a team session, using the charter's feature list and the team's experience with .NET and SQL Server). Sizes were then converted to effort with a fixed scale, calibrated so that it already includes the productivity gain from AI coding assistants (roughly 25–30% less implementation time than without them) but also the extra time for reviewing AI-generated code and writing tests:
 
@@ -225,7 +233,7 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 | Effort (man-weeks) | 0.25 | 0.5 | 1 | 2 | 4 |
 | ≈ hours | 10 | 20 | 40 | 80 | 160 |
 
-**Effort versus duration.** Duration = effort ÷ total FTE allocated to the activity. For example WBS-6.2 (L, 2 man-weeks) has İY and MTY at 0.5 FTE each, so it takes 2 weeks; WBS-4.1 (M, 1 man-week) has MG and ME at 0.5 FTE each and takes 1 week. AI agents are treated as a productivity multiplier already contained in the effort figures, not as extra team members, because their output must be specified, reviewed and tested by a person. Team capacity is 6 members × 0.5 FTE × 10 weeks = 30 man-weeks at baseline, plus 2 man-weeks of planned peak allocation in weeks 6–10; the plan uses **31 man-weeks**, leaving about 1 man-week of reserve.
+**Effort versus duration.** Duration = effort ÷ total FTE allocated to the activity. For example WBS-6.2 (L, 2 man-weeks) has İY and MTY at 0.5 FTE each, so it takes 2 weeks; WBS-4.1 (M, 1 man-week) has MG and ME at 0.5 FTE each and takes 1 week. AI agents are treated as a productivity multiplier already contained in the effort figures, not as extra team members, because their output must be specified, reviewed and tested by a person. Team capacity is 6 members × 0.5 FTE × 10 weeks = 30 man-weeks at baseline, plus 3.5 man-weeks of planned peak allocation in weeks 6–10; the plan uses **31.75 man-weeks**. The difference is the lighter week 1 (1 man-week) and 0.75 man-weeks left free in week 10 as reserve for stabilization.
 
 ---
 
@@ -248,73 +256,82 @@ Each task from Section 1.3 is decomposed into activities. Activity IDs follow th
 
 | WBS ID | Assigned member | Responsibility | FTE | Weeks |
 |---|---|---|---|---|
-| WBS-1.1 | Enes Birol Tatlı (EBT) | Connection factory & connection test | 0.5 | W1 |
-| WBS-15.1 | Mehmet Elhan (ME) | Repository, solution skeleton & CI | 0.5 | W1 |
-| WBS-2.1 | Ömer Faruk Yılmaz (ÖFY) | Domain model & module contracts | 0.25 | W1 |
-| WBS-2.1 | Mücahit Günay (MG) | Domain model & module contracts | 0.25 | W1 |
-| WBS-2.1 | İsmail Yeşilyurt (İY) | Domain model & module contracts | 0.25 | W1 |
-| WBS-2.1 | Mustafa Talha Yıldırım (MTY) | Domain model & module contracts | 0.25 | W1 |
+| WBS-15.1 | Mehmet Elhan (ME) | Repository, solution skeleton & CI | 1 | W1 (first half) |
+| WBS-1.1 | Enes Birol Tatlı (EBT) | Connection factory & connection test | 1 | W1 (second half) |
+| WBS-2.1 | Ömer Faruk Yılmaz (ÖFY) | Domain model & module contracts | 0.5 | W1 (second half) |
+| WBS-2.1 | Mücahit Günay (MG) | Domain model & module contracts | 0.5 | W1 (second half) |
+| WBS-2.1 | İsmail Yeşilyurt (İY) | Domain model & module contracts | 0.5 | W1 (second half) |
+| WBS-2.1 | Mustafa Talha Yıldırım (MTY) | Domain model & module contracts | 0.5 | W1 (second half) |
 | WBS-1.2 | Enes Birol Tatlı (EBT) | Credential store & recent connections | 0.5 | W2 |
+| WBS-2.3 | Mehmet Elhan (ME) | Parallel extraction runner | 0.5 | W2 |
 | WBS-15.2 | Mustafa Talha Yıldırım (MTY) | Test fixture databases | 0.5 | W2 |
 | WBS-2.2 | Ömer Faruk Yılmaz (ÖFY) | Core catalog queries | 0.5 | W2–W3 |
-| WBS-2.3 | Mehmet Elhan (ME) | Parallel extraction runner | 0.5 | W2 |
 | WBS-3.1 | Mücahit Günay (MG) | ScriptDom normalizer | 0.5 | W2–W3 |
 | WBS-6.1 | İsmail Yeşilyurt (İY) | Script framework & dependency ordering | 0.5 | W2–W3 |
+| WBS-9.1 | Mustafa Talha Yıldırım (MTY) | Script execution engine | 0.5 | W3 |
 | WBS-10.1 | Mehmet Elhan (ME) | Job configuration & CLI commands | 0.5 | W3–W4 |
 | WBS-13.1 | Enes Birol Tatlı (EBT) | Minimal API & SSE backend | 0.5 | W3–W4 |
-| WBS-9.1 | Mustafa Talha Yıldırım (MTY) | Script execution engine | 0.5 | W3 |
-| WBS-2.4 | Ömer Faruk Yılmaz (ÖFY) | Permission checks & coverage probe | 0.5 | W4–W5 |
 | WBS-3.2 | Mücahit Günay (MG) | XxHash128 object & sub-part hashing | 0.5 | W4 |
+| WBS-2.4 | Ömer Faruk Yılmaz (ÖFY) | Permission checks & coverage probe | 0.5 | W4–W5 |
 | WBS-6.2 | İsmail Yeşilyurt (İY) | Table & type script generators | 0.5 | W4–W5 |
 | WBS-6.2 | Mustafa Talha Yıldırım (MTY) | Table & type script generators | 0.5 | W4–W5 |
 | WBS-1.3 | Enes Birol Tatlı (EBT) | Connect dialog (UI) | 0.5 | W5 |
-| WBS-4.1 | Mücahit Günay (MG) | Hash-based diff engine | 0.5 | W5 |
 | WBS-4.1 | Mehmet Elhan (ME) | Hash-based diff engine | 0.5 | W5 |
-| WBS-10.2 | Mehmet Elhan (ME) | Parallel streaming runner & exit codes | 0.25 | W6–W7 |
-| WBS-13.2 | Enes Birol Tatlı (EBT) | Compare view (SPA) | 0.5 | W6–W7 |
+| WBS-4.1 | Mücahit Günay (MG) | Hash-based diff engine | 0.5 | W5 |
 | WBS-4.2 | Mücahit Günay (MG) | Change tree & sub-changes | 0.5 | W6 |
+| WBS-14.1 | Enes Birol Tatlı (EBT) | AI provider abstraction & Ollama | 0.25 | W6 |
+| WBS-15.6 | Ömer Faruk Yılmaz (ÖFY) | 10,000-object test database & early timing | 0.25 | W6 |
+| WBS-4.3 | Mehmet Elhan (ME) | Broad object coverage | 0.25 | W6–W7 |
 | WBS-4.3 | Ömer Faruk Yılmaz (ÖFY) | Broad object coverage | 0.5 | W6–W7 |
 | WBS-4.3 | Mücahit Günay (MG) | Broad object coverage | 0.25 | W6–W7 |
-| WBS-4.3 | Mehmet Elhan (ME) | Broad object coverage | 0.25 | W6–W7 |
 | WBS-6.3 | İsmail Yeşilyurt (İY) | Module, security & settings generators | 0.5 | W6–W7 |
 | WBS-7.1 | Mustafa Talha Yıldırım (MTY) | Deployment risk analyzer | 0.5 | W6–W7 |
+| WBS-8.1 | Mustafa Talha Yıldırım (MTY) | Versioned migration file generation | 0.25 | W6–W7 |
+| WBS-10.2 | Mehmet Elhan (ME) | Parallel streaming runner & exit codes | 0.25 | W6–W7 |
+| WBS-13.2 | Enes Birol Tatlı (EBT) | Compare view (SPA) | 0.5 | W6–W7 |
 | WBS-5.1 | Mücahit Günay (MG) | Rename detection | 0.5 | W7 |
-| WBS-11.1 | Ömer Faruk Yılmaz (ÖFY) | Snapshot export/import & offline compare | 0.5 | W8–W9 |
-| WBS-13.3 | Enes Birol Tatlı (EBT) | Risk view, settings & EN/TR localization | 0.5 | W8 |
-| WBS-13.3 | Mehmet Elhan (ME) | Risk view, settings & EN/TR localization | 0.5 | W8 |
-| WBS-14.1 | Enes Birol Tatlı (EBT) | AI provider abstraction & Ollama | 0.25 | W8 |
-| WBS-15.3 | Mücahit Günay (MG) | Coverage-matrix & cross-module tests | 0.5 | W8–W9 |
 | WBS-6.4 | İsmail Yeşilyurt (İY) | Transaction wrapper, safe mode & selection | 0.5 | W8 |
-| WBS-7.2 | Mustafa Talha Yıldırım (MTY) | Trigger status report | 0.25 | W8 |
-| WBS-8.1 | Mustafa Talha Yıldırım (MTY) | Versioned migration file generation | 0.5 | W8 |
+| WBS-13.3 | Mehmet Elhan (ME) | Risk view, sub-change drill-down, settings & EN/TR localization | 0.5 | W8 |
+| WBS-13.3 | Enes Birol Tatlı (EBT) | Risk view, sub-change drill-down, settings & EN/TR localization | 0.5 | W8 |
+| WBS-14.2 | Enes Birol Tatlı (EBT) | AI release notes, risk explanations & review | 0.25 | W8 |
+| WBS-15.7 | İsmail Yeşilyurt (İY) | Fixture update for new object kinds | 0.25 | W8 |
+| WBS-8.2 | Mustafa Talha Yıldırım (MTY) | Migration history, apply & drift detection | 0.5 | W8–W9 |
+| WBS-11.1 | Ömer Faruk Yılmaz (ÖFY) | Snapshot export/import & offline compare | 0.5 | W8–W9 |
+| WBS-15.3 | Mücahit Günay (MG) | Coverage-matrix & cross-module tests | 0.5 | W8–W9 |
+| WBS-6.5 | İsmail Yeşilyurt (İY) | Rollback & bidirectional scripts | 0.75 | W9 |
+| WBS-6.5 | Mustafa Talha Yıldırım (MTY) | Rollback & bidirectional scripts | 0.25 | W9 |
 | WBS-12.1 | Mehmet Elhan (ME) | HTML & JSON reports | 0.5 | W9 |
-| WBS-14.2 | Enes Birol Tatlı (EBT) | AI release notes, risk explanations & review | 0.5 | W9–W10 |
-| WBS-6.5 | İsmail Yeşilyurt (İY) | Rollback & bidirectional scripts | 0.5 | W9–W10 |
-| WBS-8.2 | Mustafa Talha Yıldırım (MTY) | Migration history, apply & drift detection | 0.5 | W9–W10 |
-| WBS-9.2 | Enes Birol Tatlı (EBT) | Execution UI with live messages | 0.25 | W9 |
+| WBS-14.2 | Enes Birol Tatlı (EBT) | AI release notes, risk explanations & review | 0.75 | W9 |
+| WBS-15.5 | Ömer Faruk Yılmaz (ÖFY) | Performance benchmark vs DacFx | 0.25 | W9 |
+| WBS-15.8 | Mücahit Günay (MG) | Compatibility, permission & usability assessment | 0.25 | W9 |
+| WBS-15.9 | Mehmet Elhan (ME) | First end-to-end pass | 0.25 | W9 |
+| WBS-7.2 | Mustafa Talha Yıldırım (MTY) | Trigger status report | 0.25 | W10 |
+| WBS-9.2 | Enes Birol Tatlı (EBT) | Execution UI with live messages | 0.25 | W10 |
 | WBS-15.4 | Ömer Faruk Yılmaz (ÖFY) | End-to-end tests & stabilization | 0.25 | W10 |
 | WBS-15.4 | Mücahit Günay (MG) | End-to-end tests & stabilization | 0.25 | W10 |
 | WBS-15.4 | İsmail Yeşilyurt (İY) | End-to-end tests & stabilization | 0.25 | W10 |
 | WBS-15.4 | Mustafa Talha Yıldırım (MTY) | End-to-end tests & stabilization | 0.25 | W10 |
-| WBS-15.5 | Ömer Faruk Yılmaz (ÖFY) | Performance benchmark vs DacFx | 0.5 | W10 |
 | WBS-16.1 | Mehmet Elhan (ME) | User & developer documentation | 0.25 | W10 |
 | WBS-16.1 | Mücahit Günay (MG) | User & developer documentation | 0.25 | W10 |
 | WBS-16.2 | Mehmet Elhan (ME) | Demo scenario & presentation material | 0.25 | W10 |
+
+The W1 rows are half-week activities, so their FTE is the rate inside that half. WBS-14.2 runs at 0.25 FTE in W8 and 0.75 FTE in W9, an average of 0.5 FTE.
 
 **Weekly allocation per member (FTE).** Values above 0.5 are planned peaks.
 
 | Member | W1 | W2 | W3 | W4 | W5 | W6 | W7 | W8 | W9 | W10 | Σ man-wk |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| ME | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 5 |
-| ÖFY | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | 5 |
-| MG | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | **0.75** | 0.5 | 0.5 | 0.5 | 5.25 |
-| İY | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | 5 |
-| MTY | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | 0.5 | **0.75** | 5.25 |
-| EBT | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | **0.75** | 0.5 | 5.5 |
+| ME | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | 0.5 | 5.25 |
+| ÖFY | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | 0.5 | 0.5 | **0.75** | 0.25 | 5 |
+| MG | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | **0.75** | 0.5 | **0.75** | 0.5 | 5.5 |
+| İY | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | **0.75** | 0.25 | 5 |
+| MTY | 0.25 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | **0.75** | 0.5 | **0.75** | 0.5 | 5.5 |
+| EBT | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | **0.75** | 0.5 | **0.75** | **0.75** | 0.25 | 5.5 |
+| **Total** | 2 | 3 | 3 | 3 | 3 | 4 | 3.5 | 3.5 | 4.5 | 2.25 | **31.75** |
 
 **Availability or allocation constraints.**
 
-- All members are full-time students taking other courses; the baseline is 0.5 FTE (≈20 h/week). Week 1 is lighter (0.25 FTE for most members) because the Project Plan and requirements work run in parallel.
+- All members are full-time students taking other courses; the baseline is 0.5 FTE (≈20 h/week). Week 1 is lighter (0.25 FTE for most members) because the Project Plan and requirements work run in parallel. Week 9 is the busiest week because test results must be ready before the Test Specification on 21.12, and week 10 is kept light for stabilization.
 - Peaks of 0.75 FTE are planned only in weeks 6–10 (from the midterm week on; the midterm is Monday 23 Nov after 17:00) and never for more than two consecutive weeks per person, except in the final stabilization week.
 - Course report deadlines (08.11, 23.11, 07.12, 21.12), customer meetings (26.10, 07.12, 21.12), peer scoring and weekly lectures take roughly 10% of each member's time; this is already excluded from the 0.5 FTE.
 - Windows-specific parts (DPAPI, LocalDB) need Windows machines; members on other platforms use SQL Server in Docker and rely on CI for Windows-only tests.
@@ -345,34 +362,42 @@ The course allows AI agents as team members provided their contribution is repor
 
 ![PERT network](images/pert-chart.png)
 
-*Figure 1 — PERT network (activity-on-node). ES/EF = earliest start/finish, LS/LF = latest start/finish, measured in weeks from 19 Oct 2026; D = duration; TF = total float. Zero-float activities and critical links are shown in red.*
+*Figure 1 — PERT network (activity-on-node). ES/EF = earliest start/finish, LS/LF = latest start/finish, measured in weeks from 19 Oct 2026; D = duration; TF = total float. Zero-float activities and critical links are shown in red. Source: `docs/diagrams/project-plan/`.*
 
-**PERT notes (activity durations and dependencies).** The network contains only technical (finish-to-start) dependencies; durations come from Section 3 (effort ÷ allocated FTE). After the joint domain-model activity (WBS-2.1) the work splits into parallel streams: extraction (2.2 → 2.4 → 4.3 → 11.1), comparison (3.1 → 3.2 → 4.1 → 4.2 → 5.1), script generation (6.1 → 6.2 → 6.3 → 6.4 → 6.5), risk and migration (7.1, 8.1 → 8.2, 9.1), CLI (10.1 → 10.2 → 12.1) and web/AI (1.1 → 1.2 → 13.1 → 13.2 → 13.3, 14.1 → 14.2). The streams converge at WBS-4.1 (diff engine), WBS-6.4 (safe mode needs the risk analyzer) and the final end-to-end test WBS-15.4. Activities with float (e.g. WBS-15.1 TF 9, WBS-2.3 TF 7, WBS-7.2 TF 6, WBS-9.1 TF 6) are scheduled later than their earliest start where the owner is busy on more urgent work; their planned dates always stay within the ES–LS window, so resource levelling does not move the finish date.
+**PERT notes (activity durations and dependencies).** The network contains only technical (finish-to-start) dependencies; durations come from Section 3 (effort ÷ allocated FTE). WBS-15.1 is the first activity because all code builds on the repository, solution and CI. It takes the first half of week 1, followed by WBS-2.1 and WBS-1.1 in the second half. After the domain model the work splits into parallel streams: extraction (2.2 → 2.4 → 4.3 → 11.1), comparison (3.1 → 3.2 → 4.1 → 4.2 → 5.1), script generation (6.1 → 6.2 → 6.3 → 6.4 → 6.5), risk and migration (7.1, 8.1 → 8.2, 9.1), CLI (10.1 → 10.2 → 12.1) and web/AI (1.1 → 1.2 → 13.1 → 13.2 → 13.3, 14.1 → 14.2). The streams converge at WBS-4.1 (diff engine), WBS-6.4 (safe mode needs the risk analyzer) and the final end-to-end test WBS-15.4, which waits for rollback (WBS-6.5), the first end-to-end pass (WBS-15.9) and the assessment (WBS-15.8).
+
+**Change tree dependencies.** The table generators (WBS-6.2) and the risk analyzer (WBS-7.1) work on the comparison result defined in WBS-2.1 and on snapshot sub-parts, not on the change tree, so WBS-4.2 is not their predecessor. Until WBS-4.1 is merged, WBS-6.2 is tested with comparison results built from fixture data. The real consumers of WBS-4.2 are the drill-down in WBS-13.3, the reports in WBS-12.1 and rename detection in WBS-5.1, and all three now follow it in the network.
+
+Activities with float (e.g. WBS-2.3 TF 6, WBS-7.2 TF 6, WBS-9.1 TF 6) are scheduled later than their earliest start where the owner is busy on more urgent work; their planned dates always stay within the ES–LS window, so resource levelling does not move the finish date.
 
 ### 5.2 Critical Path and Total Project Duration
 
 **Critical path (in activity order):**
 
-`WBS-2.1 → WBS-6.1 → WBS-6.2 → WBS-6.3 → WBS-6.4 → WBS-6.5`
+`WBS-15.1 → WBS-2.1 → WBS-6.1 → WBS-6.2 → WBS-6.3 → WBS-6.4 → WBS-6.5 → WBS-15.4`
 
-A second, converging zero-float chain feeds WBS-6.4: `WBS-2.1 → WBS-3.1 → WBS-3.2 → WBS-4.1 → WBS-7.1 → WBS-6.4`.
+A second, converging zero-float chain feeds WBS-6.4: `WBS-2.1 → WBS-3.1 → WBS-3.2 → WBS-4.1 → WBS-7.1 → WBS-6.4`. After WBS-6.4 two more zero-float activities run next to rollback and feed WBS-15.4: WBS-15.8 and WBS-15.9.
 
 | Critical activity | Name | Duration (weeks) | Planned dates | Reason it is critical |
 |---|---|---|---|---|
-| WBS-2.1 | Domain model & module contracts | 1 | 19 Oct – 23 Oct | Start node; every stream depends on the frozen domain model and contracts. |
+| WBS-15.1 | Repository, solution skeleton & CI | 0.5 | 19 Oct – 21 Oct | Start node; all code builds on the repository, solution and CI. |
+| WBS-2.1 | Domain model & module contracts | 0.5 | 21 Oct – 23 Oct | Every stream builds on the baseline of the domain model and contracts. |
 | WBS-6.1 | Script framework & dependency ordering | 2 | 26 Oct – 06 Nov | Generators cannot be written before the script builder and ordering graph exist; ES = LS = 1. |
 | WBS-6.2 | Table & type script generators | 2 | 09 Nov – 20 Nov | Table/type generators are needed by module generators; ES = LS = 3. |
 | WBS-6.3 | Module, security & settings generators | 2 | 23 Nov – 04 Dec | Must finish before safe-mode/transaction wrapper; ES = LS = 5. |
 | WBS-6.4 | Transaction wrapper, safe mode & selection | 1 | 07 Dec – 11 Dec | Joins script generation and risk analysis; any delay moves rollback work. |
-| WBS-6.5 | Rollback & bidirectional scripts | 2 | 14 Dec – 25 Dec | Last activity; finishes exactly at the project end (EF = LF = 10). |
+| WBS-6.5 | Rollback & bidirectional scripts | 1 | 14 Dec – 18 Dec | Must finish before WBS-15.4 tests apply → rollback; ES = LS = 8. |
+| WBS-15.8 | Compatibility, permission & usability assessment | 1 | 14 Dec – 18 Dec | Needs the safe mode of WBS-6.4; findings feed stabilization; ES = LS = 8. |
+| WBS-15.9 | First end-to-end pass | 1 | 14 Dec – 18 Dec | Needs the safe mode of WBS-6.4; results are reported on 21.12; ES = LS = 8. |
+| WBS-15.4 | End-to-end tests & stabilization | 1 | 21 Dec – 25 Dec | Last activity; finishes exactly at the project end (EF = LF = 10). |
 | WBS-3.1 | ScriptDom normalizer | 2 | 26 Oct – 06 Nov | Normalizer is required before hashing; ES = LS = 1 (converging chain). |
 | WBS-3.2 | XxHash128 object & sub-part hashing | 1 | 09 Nov – 13 Nov | Hashes are the input of the diff engine; ES = LS = 3. |
 | WBS-4.1 | Hash-based diff engine | 1 | 16 Nov – 20 Nov | Diff output is needed by the risk analyzer; ES = LS = 4. |
 | WBS-7.1 | Deployment risk analyzer | 2 | 23 Nov – 04 Dec | Safe mode (6.4) needs risk classification; ES = LS = 5. |
 
-**Total project schedule: 10 weeks**, from **2026-10-19** to **2026-12-25** (sum of critical-path durations: 1 + 2 + 2 + 2 + 1 + 2 = 10 weeks). The demo (2026-12-26) and presentation (2026-12-28) follow as milestones.
+**Total project schedule: 10 weeks**, from **2026-10-19** to **2026-12-25** (sum of critical-path durations: 0.5 + 0.5 + 2 + 2 + 2 + 1 + 1 + 1 = 10 weeks). The demo (2026-12-26) and presentation (2026-12-28) follow as milestones.
 
-**Critical-path explanation.** A forward pass over the PERT network gave each activity its earliest start/finish, and a backward pass from the project end (week 10, fixed by the codebase deadline) gave the latest start/finish. Activities with total float TF = LS − ES = 0 form the critical path. The longest chain is the script-generation stream, because its five activities are strictly sequential and add up to 9 weeks after the domain model. The comparison → risk chain reaches WBS-6.4 at exactly the same time, so it is also critical: a slip in the normalizer, hashing, diff engine or risk analyzer delays safe mode and rollback just as much. All other activities have 1–9 weeks of float. Because the schedule has no slack at the end, the critical activities get backup owners (Section 4.2), are reviewed in every weekly meeting, and optional scope is the first thing dropped if they slip.
+**Critical-path explanation.** A forward pass over the PERT network gave each activity its earliest start/finish, and a backward pass from the project end (week 10, fixed by the codebase deadline) gave the latest start/finish. Activities with total float TF = LS − ES = 0 form the critical path. The longest chain is the script-generation stream, because its five activities are strictly sequential and add up to 8 weeks after the domain model, and the final end-to-end test can only run on finished rollback work. WBS-6.5 was shortened from two weeks to one by raising its allocation to 1 FTE (İY 0.75, MTY 0.25) for this reason. The comparison → risk chain reaches WBS-6.4 at exactly the same time, so it is also critical: a slip in the normalizer, hashing, diff engine or risk analyzer delays safe mode and rollback just as much. All other activities have 1–6 weeks of float. Because the schedule has no slack at the end, the critical activities get backup owners (Section 4.2), are reviewed in every weekly meeting, and optional scope is the first thing dropped if they slip.
 
 ### 5.3 Gantt Chart — Project Timeline
 
@@ -382,10 +407,11 @@ A second, converging zero-float chain feeds WBS-6.4: `WBS-2.1 → WBS-3.1 → WB
 
 **Schedule consistency check.**
 
-- All 40 WBS activities appear with the same IDs, sizes and durations in Sections 2, 3, 4.2, 5.1 and 5.3.
-- For every activity, effort = duration × allocated FTE (e.g. WBS-4.3: 2 weeks × (0.5 + 0.25 + 0.25) = 2 man-weeks); the total is 31 man-weeks.
+- All 44 WBS activities appear with the same IDs, sizes and durations in Sections 2, 3, 4.2, 5.1 and 5.3.
+- For every activity, effort = duration × allocated FTE (e.g. WBS-4.3: 2 weeks × (0.5 + 0.25 + 0.25) = 2 man-weeks); the total is 31.75 man-weeks.
 - Every planned start lies between the activity's ES and LS, and no activity starts before all its predecessors finish; therefore the finish date of the resource-levelled Gantt equals the PERT critical-path length (10 weeks).
-- No member exceeds 0.75 FTE in any week, and weekly totals match the allocation table in Section 4.2.
+- No member exceeds 0.75 FTE in any week, and weekly totals match the allocation table in Section 4.2. These checks are automated in `docs/diagrams/project-plan/charts.py`, which also draws Figures 1 and 2.
+- Week 10 holds only the final end-to-end run, documentation, the demo material and two tiny activities (WBS-7.2, WBS-9.2), at 2.25 FTE of the 3 FTE baseline. Rollback, migration history, the AI feature and the benchmark finish by week 9.
 - The last activities finish on Friday 2026-12-25, within the codebase deadline (25.12.2026 23:59).
 
 **Course milestones and customer meetings** (from the course outline) that the schedule must respect:
