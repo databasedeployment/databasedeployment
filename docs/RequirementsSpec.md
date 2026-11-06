@@ -318,6 +318,10 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-09 | WBS-15.3 | Technical activity: coverage matrix and cross-module tests that prove every object kind is either scripted or reported. | FR-16, FR-52 |
 | SC-09 | WBS-15.4 | Technical activity: end-to-end tests and stabilization on all fixtures before the release. | FR-52, FR-53 |
 | SC-03 | WBS-15.5 | As a BI developer, I want proof that SchemaDiff is much faster than DacFx on a large database, so that I can justify replacing SSDT compare in our nightly runs. | FR-54 |
+| SC-03 | WBS-15.6 | Technical activity: generated 10,000 object database and a first timing in week 6, used by WBS-15.5. | FR-54, NFR-04 |
+| SC-09 | WBS-15.7 | Technical activity: fixture update for the object kinds added by WBS-4.3 and the generators. | FR-16, FR-52 |
+| SC-09 | WBS-15.8 | Technical activity: runs on SQL Server 2016 on a Windows machine and LocalDB, with a low-privilege login and on Azure SQL, plus a walkthrough with 3 external users. | NFR-06, NFR-12 |
+| SC-09 | WBS-15.9 | Technical activity: first CLI compare, script and apply pass on the fixtures, reported in the Test Specification. | FR-52, FR-53 |
 | SC-10 | WBS-16.1 | As a new user, I want a README, a CLI reference and a web guide, so that I can install and use the tool without asking the team. | FR-55 |
 | SC-10 | WBS-16.2 | Technical activity: demo scenario and presentation material for the final demo. It has no user story. | FR-55 |
 
@@ -1052,5 +1056,6 @@ Changes to the Project Plan since version 1.0, as asked in the assignment of thi
 | W2 | The recent connections store moved from the web project to Core behind a secret protector interface. | WBS-1.2 can be tested on every platform, DPAPI is still used on Windows. |
 | W3 | The script execution engine (WBS-9.1) lives in Core instead of the web project. | The CLI can reuse it. WBS-9.2 still delivers the web execution view. |
 | W3 | A web integration test project was added under tests/unit. | Supports WBS-13.1 to WBS-13.3 and the security checks of NFR-01 and NFR-03. |
+| 2026-11-06 | Project Plan revised to version 1.2 after the TA review: WBS-15.1 comes first, WBS-4.2 consumers corrected, WBS-6.5 moved to W9 before the final WBS-15.4 run, contracts treated as a baseline with a W4 checkpoint, week 10 relieved, new activities WBS-15.6 to WBS-15.9. | Effort 31.75 man-weeks. Finish date unchanged. |
 
-The critical path (WBS-2.1, WBS-6.1 to WBS-6.5) and the total of 31 man-weeks are unchanged.
+The critical path is now WBS-15.1, WBS-2.1, WBS-6.1 to WBS-6.5 and WBS-15.4, and the project still finishes on 25.12.2026.
