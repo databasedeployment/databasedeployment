@@ -340,8 +340,8 @@ notation and were drawn with PlantUML. Their sources are kept next to the images
 
 The four human actors (UT-01 to UT-04) start the use cases on the left. The CI/CD pipeline (UT-05) is a
 primary actor too, because it starts comparisons and reports without a person. SQL Server (UT-06) and the AI
-provider (UT-07) are secondary actors that the system calls. UC-02 Extract a schema is included by UC-04 and
-UC-11 (see 3.3.3), and UC-07 Analyze deployment risk is included by UC-06 so that safe mode always has a risk
+provider (UT-07) are secondary actors that the system calls. UC-02 Extract a schema is included by UC-04, UC-11 and
+UC-17 (see 3.3.3), and UC-07 Analyze deployment risk is included by UC-06 so that safe mode always has a risk
 classification. Every task of the Project Plan appears as one use case, which is checked in the coverage
 matrix in 3.4.1.
 
@@ -384,7 +384,7 @@ matrix in 3.4.1.
 
 ![Snapshots use case diagram](images/requirements/uc-snapshots.png)
 
-**Functionality covered:** T-11 / FR-41, FR-42 / UC-11  
+**Functionality covered:** T-11 / FR-41, FR-42 / UC-11, UC-17  
 **Diagram notes:** The DBA exports the snapshot from a database the developer cannot reach. The developer then compares a live database against the file.
 
 #### 3.3.8 Functionality-Specific Use Case Diagram — Web Interface
@@ -426,7 +426,7 @@ Every task of the Project Plan has at least one detailed use case below.
 | T-08 | FR-29 to FR-32 | UC-08 | SC-06 |
 | T-09 | FR-33 to FR-35 | UC-09 | SC-04 |
 | T-10 | FR-36 to FR-40 | UC-10 | SC-03 |
-| T-11 | FR-41, FR-42 | UC-11 | SC-07 |
+| T-11 | FR-41, FR-42 | UC-11, UC-17 | SC-07 |
 | T-12 | FR-43 | UC-12 | SC-03, SC-05 |
 | T-13 | FR-44 to FR-47 | UC-13 | SC-01 |
 | T-14 | FR-48 to FR-51 | UC-14 | SC-05 |
@@ -832,26 +832,25 @@ A jobs.json file with at least one job exists.
 **Post-condition(s):**
 Every selected job has a result or an error, and the exit code reflects the outcome for the pipeline.
 
-#### 3.4.12 UC-11 — Compare against a snapshot
+#### 3.4.12 UC-11 — Export a snapshot
 
 | Field | Description |
 |---|---|
 | **Use case ID** | UC-11 |
-| **Use case name** | Compare against a snapshot |
-| **Goal / Purpose** | Compare with an environment that cannot be accessed directly. |
-| **Actor(s)** | UT-02 DBA (exports), UT-01 Database Developer (compares). |
+| **Use case name** | Export a snapshot |
+| **Goal / Purpose** | Keep the schema of a database that others cannot reach in a file they can compare against. |
+| **Actor(s)** | UT-02 DBA (primary). UT-06 SQL Server (secondary). |
 | **Related Project Plan task(s)** | T-11 |
-| **Related functional requirement(s)** | FR-41, FR-42 |
+| **Related functional requirement(s)** | FR-41 |
 
-**Pre-condition(s):**
-The DBA can connect to the reference database. The developer can connect to the database to compare.
+**Pre-condition(s):**  
+The DBA can connect to the reference database.
 
 **Main success flow:**
 
-1. **Actor:** The DBA exports a snapshot of the reference database.
-2. **System:** Extracts the schema (UC-02) and writes a compressed file with a version header.
-3. **Actor:** The developer selects the snapshot file as the target and a live database as the source.
-4. **System:** Loads the snapshot, extracts the live database and compares them (UC-04).
+1. **Actor:** Selects the reference database and starts the export.
+2. **System:** Extracts the schema (UC-02).
+3. **System:** Writes a compressed file with a version header and reports its size and object count.
 
 **Alternative flows:**
 
@@ -861,10 +860,10 @@ The DBA can connect to the reference database. The developer can connect to the 
 
 **Exception / error flows:**
 
-- **E1 — Incompatible snapshot version (occurs at step 4):** The system refuses the file and names the version it supports, instead of comparing against data it may misread.
+- **E1 — Definitions not readable (occurs at step 2):** The snapshot is still written, and the objects that could not be read are stored as indeterminate, so a later comparison never reports them as equal.
 
-**Post-condition(s):**
-The comparison result is the same as comparing with the live reference database at the time of the export.
+**Post-condition(s):**  
+A snapshot file exists that can be imported without access to the reference database.
 
 #### 3.4.13 UC-12 — Export a report
 
@@ -1007,6 +1006,39 @@ The user has a machine with access to two SQL Server databases.
 The new user has run a comparison using only the documentation.
 
 ---
+
+#### 3.4.18 UC-17 — Compare against a snapshot
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-17 |
+| **Use case name** | Compare against a snapshot |
+| **Goal / Purpose** | Compare with an environment that cannot be accessed directly. |
+| **Actor(s)** | UT-01 Database Developer (primary). UT-06 SQL Server (secondary). |
+| **Related Project Plan task(s)** | T-11 |
+| **Related functional requirement(s)** | FR-42 |
+
+**Pre-condition(s):**  
+A snapshot file exported with UC-11 is available and the developer can connect to the database to compare.
+
+**Main success flow:**
+
+1. **Actor:** Selects the snapshot file as the target and a live database as the source.
+2. **System:** Loads the snapshot and checks its version header.
+3. **System:** Extracts the live database (UC-02) and compares the two (UC-04).
+
+**Alternative flows:**
+
+- **A1 — Snapshot as source (branches from step 1):**
+  1. The developer selects the snapshot as the source and the live database as the target.
+  2. The flow continues at step 2 with the direction reversed.
+
+**Exception / error flows:**
+
+- **E1 — Incompatible snapshot version (occurs at step 2):** The system refuses the file and names the version it supports, instead of comparing against data it may misread.
+
+**Post-condition(s):**  
+The comparison result is the same as comparing with the live reference database at the time of the export.
 
 ## 4. Changelog
 
