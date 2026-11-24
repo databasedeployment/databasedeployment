@@ -162,7 +162,7 @@ FR-52 to FR-54 of version 1.0 were removed in the revision. They described proje
 | UT-02 | Database Administrator (DBA) | Owns the test and production servers and approves what is deployed there. | Check deployment risk, run scripts in a transaction, compare production with a snapshot, check trigger states. | FR-08, FR-21, FR-25 to FR-28, FR-33 to FR-35, FR-42 |
 | UT-03 | BI / ETL Developer | Maintains the staging, core and mart layers of a data warehouse. | Compare all layers at once from the CLI, find renamed columns, keep layers in sync. | FR-17, FR-36 to FR-40 |
 | UT-04 | Release Manager | Plans and documents releases across environments. | Get release notes and HTML reports, follow pending migrations and drift. | FR-31, FR-32, FR-43, FR-48 |
-| UT-05 | CI/CD pipeline (external system) | Runs SchemaDiff from the command line in automated jobs. | Detect schema drift through exit codes, publish reports as build artifacts. | FR-36 to FR-40, FR-43, FR-53 |
+| UT-05 | CI/CD pipeline (external system) | Runs SchemaDiff from the command line in automated jobs. | Detect schema drift through exit codes, publish reports as build artifacts. | FR-36 to FR-40, FR-43, FR-30 to FR-32 |
 | UT-06 | SQL Server instance (external system) | Source or target of a comparison and target of script execution. | Answers catalog queries, executes scripts and stores the migration history. | FR-06 to FR-10, FR-30, FR-33 |
 | UT-07 | AI provider (external system) | Local Ollama model by default, optionally an OpenAI-compatible service. | Turns schema metadata into summaries, explanations and review comments. | FR-48 to FR-51 |
 
@@ -317,7 +317,7 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-09 | WBS-15.3 | Technical activity: coverage matrix and cross-module tests that prove every object kind is either scripted or reported. | FR-14, FR-16 |
 | SC-09 | WBS-15.4 | Technical activity: end-to-end tests and stabilization on all fixtures before the release. | FR-14, NFR-11 |
 | SC-03 | WBS-15.5 | As a BI developer, I want proof that SchemaDiff is much faster than DacFx on a large database, so that I can justify replacing SSDT compare in our nightly runs. | NFR-04 |
-| SC-03 | WBS-15.6 | Technical activity: generated 10,000 object database and a first timing in week 6, used by WBS-15.5. | NFR-04 |
+| SC-03 | WBS-15.6 | Technical activity: generated 10,000 object database and a first timing in week 7, used by WBS-15.5. | NFR-04 |
 | SC-09 | WBS-15.7 | Technical activity: fixture update for the object kinds added by WBS-4.3 and the generators. | FR-14, FR-16 |
 | SC-09 | WBS-15.8 | Technical activity: runs on SQL Server 2016 on a Windows machine and LocalDB, with a low-privilege login and on Azure SQL, plus a walkthrough with 3 external users. | NFR-06, NFR-12 |
 | SC-09 | WBS-15.9 | Technical activity: first CLI compare, script and apply pass on the fixtures, reported in the Test Specification. | FR-14, NFR-11 |
@@ -339,7 +339,7 @@ notation and were drawn with PlantUML. Their sources are kept next to the images
 **Whole-system diagram notes:**
 
 The four human actors (UT-01 to UT-04) start the use cases on the left. The CI/CD pipeline (UT-05) is a
-primary actor too, because it starts comparisons and reports without a person. SQL Server (UT-06) and the AI
+primary actor too, because it starts comparisons, reports and migrations (UC-15) without a person. SQL Server (UT-06) and the AI
 provider (UT-07) are secondary actors that the system calls. UC-02 Extract a schema is included by UC-04, UC-11 and
 UC-17 (see 3.3.3), and UC-07 Analyze deployment risk is included by UC-06 so that safe mode always has a risk
 classification. Every task of the Project Plan appears as one use case, which is checked in the coverage
@@ -433,7 +433,7 @@ Every task of the Project Plan has at least one detailed use case below.
 | T-15 | none (technical task, verified through FR-14, NFR-04 and NFR-11) | none | SC-09 |
 | T-16 | FR-55 | UC-16 | SC-10 |
 
-All sixteen tasks of Project Plan Section 1.3 are covered. Optional scope items of the plan (cloud AI provider,
+All sixteen tasks of Project Plan Section 1.3 are covered. T-15 is covered as a technical task through the verification of FR-14, NFR-04 and NFR-11, and every other task has at least one functional requirement and one use case. Optional scope items of the plan (cloud AI provider,
 snapshot against snapshot, theme switch, release binaries) are not specified as separate requirements and are
 only delivered if the critical path keeps its schedule.
 
