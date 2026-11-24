@@ -489,7 +489,7 @@ The selected connection is valid and appears at the top of the recent connection
 | **Use case ID** | UC-02 |
 | **Use case name** | Extract a schema |
 | **Goal / Purpose** | Read the complete schema of a database quickly and safely so it can be compared. |
-| **Actor(s)** | System, started by UC-04 or UC-11 on behalf of UT-01 to UT-03. UT-06 SQL Server (secondary). |
+| **Actor(s)** | UT-01 Database Developer, UT-02 DBA, UT-03 BI / ETL Developer (primary), who start it through a comparison (UC-04), a snapshot export (UC-11) or the coverage probe. UT-06 SQL Server (secondary). |
 | **Related Project Plan task(s)** | T-02 |
 | **Related functional requirement(s)** | FR-06 to FR-10 |
 
@@ -498,28 +498,29 @@ A valid connection exists (UC-01). The login has at least VIEW DEFINITION for a 
 
 **Main success flow:**
 
-1. **System:** Runs a preflight query for the server name, database, version and VIEW DEFINITION permission.
-2. **System:** Queues one read-only query per object class and reports the total to the progress counter.
-3. **System:** Runs the queries on parallel connections without exceeding the global concurrency limit.
-4. **System:** Normalizes module bodies and builds the canonical text and hashes of every object.
-5. **System:** Builds the reference graph from module dependencies and foreign keys.
-6. **System:** Returns the snapshot together with an extraction report of timings, row counts and warnings.
+1. **Actor:** Starts a comparison, a snapshot export or the probe for a database.
+2. **System:** Runs a preflight query for the server name, database, version and VIEW DEFINITION permission.
+3. **System:** Queues one read-only query per object class and reports the total to the progress counter.
+4. **System:** Runs the queries on parallel connections without exceeding the global concurrency limit.
+5. **System:** Normalizes module bodies and builds the canonical text and hashes of every object.
+6. **System:** Builds the reference graph from module dependencies and foreign keys.
+7. **System:** Returns the snapshot together with an extraction report of timings, row counts and warnings.
 
 **Alternative flows:**
 
-- **A1 — Coverage probe first (branches from step 1):**
+- **A1 — Coverage probe first (branches from step 2):**
   1. The actor runs the probe command before the comparison.
   2. The system lists for each object class whether it can be read with the current permissions.
-  3. The actor fixes permissions or accepts the report and the flow continues at step 1.
-- **A2 — Optional query fails (branches from step 3):**
+  3. The actor fixes permissions or accepts the report and the flow continues at step 2.
+- **A2 — Optional query fails (branches from step 4):**
   1. A query that needs a newer version or an extra permission fails.
   2. The system records its name in the failed queries and adds a warning.
   3. The flow continues with the remaining queries.
 
 **Exception / error flows:**
 
-- **E1 — Definitions not readable (occurs at step 4):** Modules with a NULL definition are marked indeterminate with a reason and a warning names the missing permission. They are never reported as equal.
-- **E2 — Required query fails (occurs at step 3):** The extraction stops with an error that names the query. The comparison is not shown, because a partial schema would produce false differences.
+- **E1 — Definitions not readable (occurs at step 5):** Modules with a NULL definition are marked indeterminate with a reason and a warning names the missing permission. They are never reported as equal.
+- **E2 — Required query fails (occurs at step 4):** The extraction stops with an error that names the query. The comparison is not shown, because a partial schema would produce false differences.
 
 **Post-condition(s):**
 A snapshot of every readable object exists with hashes per object and per part, and the report says exactly what could not be read.
