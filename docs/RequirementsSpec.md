@@ -72,7 +72,7 @@ Project Plan.
 | FR-15 | T-04 | D-01, D-04 | The system shall show the changed sub-parts of a changed object as a change tree (for example Add Column, Alter Column, Drop Index). | Must | Change tree tests for every sub-change kind on fixture pairs. |
 | FR-16 | T-04 | D-01 | The system shall compare every object kind listed in the charter scope, and shall report explicitly any kind it cannot script. | Must | Coverage matrix test: every object kind is either scripted or listed as report only. |
 | FR-17 | T-05 | D-01 | The system shall detect a removed and an added object with identical structure and report them as a rename candidate, without generating sp_rename. | Should | Rename tests on fixture pairs. No sp_rename appears in generated scripts for candidates. |
-| FR-18 | T-06 | D-02 | The system shall generate a deployment script in dependency order (types, tables, modules, security, permissions, settings) in which every object is created after the objects it references. | Must | Ordering tests on the reference graph. Every generated fixture script runs without a missing object error. |
+| FR-18 | T-06 | D-02 | The system shall generate a deployment script in dependency order (types, tables, modules, security, permissions, settings) in which every object is created after the objects it references. When references form a cycle, the system shall keep the objects of the cycle in their input order and report the cycle as a warning in the script header. | Must | Ordering tests on the reference graph. Every generated fixture script runs without a missing object error. |
 | FR-19 | T-06 | D-02 | The system shall turn the CREATE statement of an existing module into ALTER at token level, keeping the original body. | Must | Token level tests with comments and strings around the CREATE keyword. |
 | FR-20 | T-06 | D-02 | The system shall wrap the generated script in a single transaction with XACT_ABORT ON so that a failing step leaves the target unchanged. | Must | A script with a failing step leaves the fixture target identical to its state before the run. |
 | FR-21 | T-06 | D-02, D-04 | The system shall run in safe mode by default, leaving data loss steps out of the script and listing them separately. | Must | A column drop on a filled table is not in the safe mode script and is listed as excluded. |
@@ -621,21 +621,20 @@ A comparison (UC-04) contains at least one removed and one added object or colum
 1. **System:** Finds removed and added pairs whose structure hashes are identical.
 2. **System:** Lists them as rename candidates next to the normal differences.
 3. **Actor:** Opens a candidate and compares the two definitions.
-4. **Actor:** Confirms the rename and writes the sp_rename call, or rejects the candidate.
-5. **System:** Keeps the candidate out of the drop and create steps of the safe mode script.
+4. **Actor:** Decides whether it is a rename. For a rename the actor writes the sp_rename call outside the tool, because the system never generates one (FR-17).
 
 **Alternative flows:**
 
-- **A1 — Candidate rejected (branches from step 4):**
-  1. The actor decides it is a real drop and add.
-  2. The system treats the pair as normal differences, the drop stays subject to the risk rules.
+- **A1 — Real drop and add (branches from step 4):**
+  1. The actor decides the pair is not a rename.
+  2. The pair stays two normal differences, and a generated script drops and adds it subject to the risk rules (UC-07).
 
 **Exception / error flows:**
 
 - **E1 — Several possible pairs (occurs at step 2):** When one removed object matches several added ones, the system lists every pair and does not choose, so the user decides.
 
 **Post-condition(s):**
-Renames are visible and no rename candidate is scripted as a drop without the user's decision.
+Rename candidates are visible next to the other differences, and no sp_rename call is generated.
 
 #### 3.4.7 UC-06 — Generate a deployment script
 
@@ -676,7 +675,7 @@ A comparison with differences exists (UC-04).
 
 **Exception / error flows:**
 
-- **E1 — Dependency cycle (occurs at step 4):** The system orders the objects in the cycle by name, writes a warning at the top of the script and lists the objects involved.
+- **E1 — Dependency cycle (occurs at step 4):** The system keeps the objects of the cycle in their input order, as FR-18 requires, writes a warning at the top of the script and lists the objects involved.
 - **E2 — Object kind cannot be scripted (occurs at step 5):** The object is listed as skipped with the reason and is not silently dropped from the script.
 
 **Post-condition(s):**
