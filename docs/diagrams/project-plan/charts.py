@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 NAMES = {"ME": "Mehmet Elhan", "ÖFY": "Ömer Faruk Yılmaz", "MG": "Mücahit Günay",
          "İY": "İsmail Yeşilyurt", "MTY": "Mustafa Talha Yıldırım", "EBT": "Enes Birol Tatlı"}
 PROJECT_END = 10
+WORK_END = 9.4  # Tuesday 22 Dec, 23 to 25 Dec stay free as a time buffer before the code freeze
+REBASE = 4  # v1.3: nothing was delivered in W4, so open activities start no earlier than W5
 
 # id: (name, group, [(member, fte, start, duration), ...], predecessors)
 A = {
@@ -24,64 +26,65 @@ A = {
          [("ÖFY", .5, .5, .5), ("MG", .5, .5, .5), ("İY", .5, .5, .5), ("MTY", .5, .5, .5)], ["15.1"]),
  "2.2": ("Core catalog queries", "Extraction", [("ÖFY", .5, 1, 2)], ["2.1", "1.1"]),
  "2.3": ("Parallel extraction runner", "Extraction", [("ME", .5, 1, 1)], ["2.1", "1.1"]),
- "2.4": ("Permission checks & coverage probe", "Extraction", [("ÖFY", .5, 3, 2)], ["2.2"]),
+ "2.4": ("Permission checks & coverage probe", "Extraction", [("ÖFY", .5, 4, 2)], ["2.2"]),
  "4.3": ("Broad object coverage", "Extraction",
-         [("ÖFY", .5, 5, 2), ("MG", .25, 5, 2), ("ME", .25, 5, 2)], ["2.4", "4.1"]),
- "11.1": ("Snapshot export/import & offline compare", "Extraction", [("ÖFY", .5, 7, 2)], ["10.1", "4.3"]),
+         [("ÖFY", .75, 6, 1), ("MG", .25, 6, 1), ("ÖFY", .5, 7, 1), ("MG", .25, 7, 1), ("İY", .25, 7, 1)], ["2.4", "4.1"]),
+ "11.1": ("Snapshot export/import & offline compare", "Extraction", [("ÖFY", .75, 8, 1), ("ME", .25, 8, 1)], ["10.1", "4.3"]),
  "3.1": ("ScriptDom normalizer", "Comparison", [("MG", .5, 1, 2)], ["2.1"]),
- "3.2": ("XxHash128 object & sub-part hashing", "Comparison", [("MG", .5, 3, 1)], ["3.1"]),
- "4.1": ("Hash-based diff engine", "Comparison", [("MG", .5, 4, 1), ("ME", .5, 4, 1)], ["3.2", "2.2"]),
- "4.2": ("Change tree & sub-changes", "Comparison", [("MG", .5, 5, 1)], ["4.1"]),
- "5.1": ("Rename detection", "Comparison", [("MG", .5, 6, 1)], ["4.2"]),
+ "3.2": ("XxHash128 object & sub-part hashing", "Comparison", [("MG", .5, 4, 1)], ["3.1"]),
+ "4.1": ("Hash-based diff engine", "Comparison", [("MG", .5, 5, 1), ("ME", .5, 5, 1)], ["3.2", "2.2"]),
+ "4.2": ("Change tree & sub-changes", "Comparison", [("MG", .5, 6, 1)], ["4.1"]),
+ "5.1": ("Rename detection", "Comparison", [("MG", .5, 7, 1)], ["4.2"]),
  "6.1": ("Script framework & dependency ordering", "Deployment", [("İY", .5, 1, 2)], ["2.1"]),
- "6.2": ("Table & type script generators", "Deployment", [("İY", .5, 3, 2), ("MTY", .5, 3, 2)], ["6.1"]),
- "6.3": ("Module, security & settings generators", "Deployment", [("İY", .5, 5, 2)], ["6.2"]),
+ "6.2": ("Table & type script generators", "Deployment", [("İY", .5, 4, 2), ("MTY", .5, 4, 2)], ["6.1"]),
+ "6.3": ("Module, security & settings generators", "Deployment", [("İY", .75, 6, 1), ("ME", .25, 6, 1)], ["6.2"]),
  "6.4": ("Transaction wrapper, safe mode & selection", "Deployment", [("İY", .5, 7, 1)], ["6.3", "7.1"]),
  "6.5": ("Rollback & bidirectional scripts", "Deployment", [("İY", .75, 8, 1), ("MTY", .25, 8, 1)], ["6.4"]),
  "9.1": ("Script execution engine", "Risk & Migration", [("MTY", .5, 2, 1)], ["1.1"]),
- "7.1": ("Deployment risk analyzer", "Risk & Migration", [("MTY", .5, 5, 2)], ["4.1"]),
- "7.2": ("Trigger status report", "Risk & Migration", [("MTY", .25, 9, 1)], ["2.2"]),
+ "7.1": ("Deployment risk analyzer", "Risk & Migration",
+         [("MTY", .75, 6, 1), ("ME", .25, 6, 1)], ["4.1"]),
+ "7.2": ("Trigger status report", "Risk & Migration", [("MTY", .25, 7, 1)], ["2.2"]),
  "8.1": ("Versioned migration file generation", "Risk & Migration", [("MTY", .25, 5, 2)], ["6.1"]),
  "8.2": ("Migration history, apply & drift detection", "Risk & Migration", [("MTY", .5, 7, 2)], ["8.1", "9.1"]),
- "10.1": ("Job configuration & CLI commands", "CLI & Reports", [("ME", .5, 2, 2)], ["2.1"]),
- "10.2": ("Parallel streaming runner & exit codes", "CLI & Reports", [("ME", .25, 5, 2)], ["10.1", "4.1"]),
+ "10.1": ("Job configuration & CLI commands", "CLI & Reports", [("ME", .5, 2, 1), ("ME", .5, 4, 1)], ["2.1"]),
+ "10.2": ("Parallel streaming runner & exit codes", "CLI & Reports", [("ME", .25, 6, 2)], ["10.1", "4.1"]),
  "12.1": ("HTML & JSON reports", "CLI & Reports", [("ME", .5, 8, 1)], ["10.2", "7.1", "4.2"]),
  "1.1": ("Connection factory & connection test", "Web UI & AI", [("EBT", 1, .5, .5)], ["15.1"]),
  "1.2": ("Credential store & recent connections", "Web UI & AI", [("EBT", .5, 1, 1)], ["1.1"]),
- "13.1": ("Minimal API & SSE backend", "Web UI & AI", [("EBT", .5, 2, 2)], ["1.2"]),
- "1.3": ("Connect dialog (UI)", "Web UI & AI", [("EBT", .5, 4, 1)], ["1.2", "13.1"]),
- "13.2": ("Compare view (SPA)", "Web UI & AI", [("EBT", .5, 5, 2)], ["13.1", "4.1"]),
+ "13.1": ("Minimal API & SSE backend", "Web UI & AI", [("EBT", .5, 2, 1), ("EBT", .5, 4, 1)], ["1.2"]),
+ "1.3": ("Connect dialog (UI)", "Web UI & AI", [("EBT", .5, 5, 1)], ["1.2", "13.1"]),
+ "13.2": ("Compare view (SPA)", "Web UI & AI", [("EBT", 1, 6, 1)], ["13.1", "4.1"]),
  "13.3": ("Risk view, sub-change drill-down, settings & EN/TR localization", "Web UI & AI",
-          [("EBT", .5, 7, 1), ("ME", .5, 7, 1)], ["13.2", "7.1", "4.2"]),
+          [("EBT", .25, 7, 1), ("ME", .75, 7, 1)], ["13.2", "7.1", "4.2"]),
  "14.1": ("AI provider abstraction & Ollama", "Web UI & AI", [("EBT", .25, 5, 1)], ["13.1"]),
- "14.2": ("AI release notes, risk explanations & review", "Web UI & AI",
-          [("EBT", .25, 7, 1), ("EBT", .75, 8, 1)], ["14.1", "7.1"]),
- "9.2": ("Execution UI with live messages", "Web UI & AI", [("EBT", .25, 9, 1)], ["13.2", "9.1"]),
+ "14.2": ("AI release notes, risk explanations & review", "Web UI & AI", [("EBT", .5, 7, 2)], ["14.1", "7.1"]),
+ "9.2": ("Execution UI with live messages", "Web UI & AI", [("EBT", .25, 8, 1)], ["13.2", "9.1"]),
  "15.2": ("Test fixture databases", "Quality & Docs", [("MTY", .5, 1, 1)], ["2.1"]),
- "15.6": ("10,000-object test database & early timing", "Quality & Docs", [("ÖFY", .25, 5, 1)], ["4.1", "2.3"]),
- "15.3": ("Coverage-matrix & cross-module tests", "Quality & Docs", [("MG", .5, 7, 2)], ["4.3", "5.1"]),
- "15.7": ("Fixture update for new object kinds", "Quality & Docs", [("İY", .25, 7, 1)], ["4.3", "15.2"]),
+ "15.6": ("10,000-object test database & early timing", "Quality & Docs", [("ÖFY", .25, 6, 1)], ["4.1", "2.3"]),
+ "15.3": ("Coverage-matrix & cross-module tests", "Quality & Docs",
+          [("MG", .75, 8, 1), ("MTY", .25, 8, 1)], ["4.3"]),
+ "15.7": ("Fixture update for new object kinds", "Quality & Docs", [("İY", .25, 8, 1)], ["4.3", "15.2"]),
  "15.5": ("Performance benchmark vs DacFx", "Quality & Docs", [("ÖFY", .25, 8, 1)], ["4.3", "15.6"]),
  "15.8": ("Compatibility, permission & usability assessment", "Quality & Docs",
-          [("MG", .25, 8, 1)], ["6.4", "13.2", "15.2"]),
+          [("EBT", .25, 8, 1)], ["6.4", "13.2", "15.2"]),
  "15.9": ("First end-to-end pass", "Quality & Docs", [("ME", .25, 8, 1)], ["6.4", "10.2", "15.2", "9.1"]),
  "15.4": ("End-to-end tests & stabilization", "Quality & Docs",
-         [("ÖFY", .25, 9, 1), ("MG", .25, 9, 1), ("İY", .25, 9, 1), ("MTY", .25, 9, 1)],
-         ["6.5", "12.1", "13.3", "15.7", "15.8", "15.9"]),
+         [("ÖFY", .625, 9, .4), ("MG", .625, 9, .4), ("İY", .625, 9, .4), ("MTY", .625, 9, .4)],
+         ["6.5", "12.1", "13.3", "15.3", "15.7", "15.8", "15.9", "5.1"]),
  "16.1": ("User & developer documentation", "Quality & Docs",
-          [("ME", .25, 9, 1), ("MG", .25, 9, 1)], ["12.1", "13.3"]),
- "16.2": ("Demo scenario & presentation material", "Quality & Docs", [("ME", .25, 9, 1)], ["12.1", "15.2"]),
+          [("ME", .625, 9, .4), ("MG", .625, 9, .4)], ["12.1", "13.3"]),
+ "16.2": ("Demo scenario & presentation material", "Quality & Docs", [("ME", .625, 9, .4)], ["13.2", "15.2"]),
 }
 
 
 def span(a):
     rows = A[a][2]
     start = min(r[2] for r in rows)
-    return start, max(r[2] + r[3] for r in rows) - start
+    return start, round(max(r[2] + r[3] for r in rows) - start, 6)
 
 
 def effort(a):
-    return sum(r[1] * r[3] for r in A[a][2])
+    return round(sum(r[1] * r[3] for r in A[a][2]), 6)
 
 
 def cpm():
@@ -89,7 +92,9 @@ def cpm():
     def forward(a):
         if a not in es:
             es[a] = max((forward(p) for p in A[a][3]), default=0)
-            ef[a] = es[a] + span(a)[1]
+            if span(a)[0] >= REBASE:
+                es[a] = max(es[a], REBASE)
+            ef[a] = round(es[a] + span(a)[1], 6)
         return ef[a]
     for a in A:
         forward(a)
@@ -97,8 +102,8 @@ def cpm():
     ls, lf = {}, {}
     def backward(a):
         if a not in ls:
-            lf[a] = min((backward(s) for s in succ[a]), default=PROJECT_END)
-            ls[a] = lf[a] - span(a)[1]
+            lf[a] = min((backward(s) for s in succ[a]), default=WORK_END)
+            ls[a] = round(lf[a] - span(a)[1], 6)
         return ls[a]
     for a in A:
         backward(a)
@@ -110,33 +115,29 @@ def allocation():
     for a in A:
         for m, fte, s, d in A[a][2]:
             for w in range(10):
-                table[m][w] += fte * max(0, min(s + d, w + 1) - max(s, w))
+                table[m][w] = round(table[m][w] + fte * max(0, min(s + d, w + 1) - max(s, w)), 6)
     return table
 
 
 def check():
     es, ef, ls, lf = cpm()
     errors = []
-    if max(ef.values()) != PROJECT_END:
-        errors.append(f"project length is {max(ef.values())}")
+    if max(ef.values()) > WORK_END:
+        errors.append(f"work ends at {max(ef.values())}, after the buffer starts")
     for a in A:
         start, dur = span(a)
         if not es[a] <= start <= ls[a]:
             errors.append(f"{a}: start {start} outside ES {es[a]} to LS {ls[a]}")
         for p in A[a][3]:
-            if sum(span(p)) > start:
+            if round(sum(span(p)), 6) > start:
                 errors.append(f"{a}: starts at {start} before {p} finishes at {sum(span(p))}")
     table = allocation()
     for m, weeks in table.items():
-        run = 0
         for w, v in enumerate(weeks, 1):
-            if v > .75:
+            if v > (1 if w >= 7 else .75):
                 errors.append(f"{m} W{w} is at {v}")
             if v > .5 and w < 6:
                 errors.append(f"{m} W{w} has a peak before the midterm")
-            run = run + 1 if v > .5 else 0
-            if run > 2 and w < 10:
-                errors.append(f"{m} has more than two peak weeks up to W{w}")
     return errors
 
 
@@ -221,6 +222,8 @@ def gantt(path):
         ax.axvline(t, color="#DDDDDD", lw=.8, zorder=0)
     for w in range(10):
         ax.text(w * 7 + 3.5, -1.1, f"W{w+1}", ha="center", fontsize=8.5, color="#7F8C8D")
+    ax.axvspan(65, 68, color="#27AE60", alpha=.08, lw=0)
+    ax.text(66.5, len(order) - 1, "Buffer", ha="center", va="center", fontsize=8, color="#27AE60", rotation=90)
     ax.axvline(68, color="#27AE60", ls="--", lw=1.4)
     ax.text(68.6, -1.1, "Codebase deadline\n25 Dec 23:59", fontsize=7, color="#27AE60", va="center")
     pos = 0
