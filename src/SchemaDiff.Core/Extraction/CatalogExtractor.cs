@@ -103,7 +103,7 @@ public sealed class CatalogExtractor(ExtractionGate? gate = null, int commandTim
         await Task.WhenAll(tasks);
         report.TotalExtraction = total.Elapsed;
 
-        VerifyDefinitionsVisible(catalog, report);
+        PermissionCheck.VerifyDefinitionsVisible(catalog, report);
         return (catalog, report);
 
         // AddQueries is called synchronously because the collection initializer evaluates each Run in order.
@@ -127,13 +127,7 @@ public sealed class CatalogExtractor(ExtractionGate? gate = null, int commandTim
                 }
                 catch (Exception ex) when (optional)
                 {
-                    lock (report)
-                    {
-                        report.FailedQueries.Add(name);
-                        report.Warnings.Add(
-                            $"Query '{name}' could not run ({ex.Message.Split('\n')[0]}). " +
-                            "The comparison continues, but analyses that rely on this data will be incomplete.");
-                    }
+                    lock (report) PermissionCheck.RecordOptionalFailure(report, name, ex);
                 }
                 finally
                 {
@@ -160,34 +154,6 @@ public sealed class CatalogExtractor(ExtractionGate? gate = null, int commandTim
             catalog.HasViewDefinition = !reader.IsDBNull(3) && reader.GetInt32(3) == 1;
         }
         report.QueryTimings["preflight"] = sw.Elapsed;
-    }
-
-    /// <summary>
-    /// Without VIEW DEFINITION, sys.sql_modules.definition silently returns NULL and every module
-    /// looks "equal". That is the most dangerous wrong answer this tool could give.
-    /// </summary>
-    private static void VerifyDefinitionsVisible(CatalogSet catalog, ExtractionReport report)
-    {
-        if (catalog.Modules.Count == 0) return;
-
-        var nullDefinitions = catalog.Modules.Count(m => m.Definition is null);
-        if (nullDefinitions == catalog.Modules.Count)
-        {
-            report.Warnings.Add(
-                $"CRITICAL: the definition is NULL for all {catalog.Modules.Count} modules. " +
-                "VIEW DEFINITION is missing and the comparison result cannot be trusted.");
-        }
-        else if (nullDefinitions > 0)
-        {
-            report.Warnings.Add(
-                $"WARNING: the definition is NULL for {nullDefinitions} of {catalog.Modules.Count} modules " +
-                "(encrypted objects or partial permissions). These objects are treated as not comparable.");
-        }
-
-        if (!catalog.HasViewDefinition)
-        {
-            report.Warnings.Add("The connected user does not appear to have VIEW DEFINITION at database level.");
-        }
     }
 
     private async Task<(List<T> Rows, TimeSpan Elapsed)> QueryAsync<T>(

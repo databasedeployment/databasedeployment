@@ -234,6 +234,7 @@ internal static class SnapshotBuilder
             objects[key] = snapshot;
         }
 
+        var uncertainTables = 0;
         foreach (var obj in catalog.Objects)
         {
             var key = keyById[obj.ObjectId];
@@ -268,6 +269,13 @@ internal static class SnapshotBuilder
                     snapshot.Placement = tablePlacement.GetValueOrDefault(obj.ObjectId);
                     if (!string.IsNullOrEmpty(snapshot.Placement))
                         SetPart(snapshot, "placement", FoldName(snapshot.Placement, options));
+                    // A CHECK, DEFAULT or computed column we could not read makes the whole table uncertain.
+                    if (PermissionCheck.UnreadableTableReason(
+                            columnsBy.GetValueOrDefault(obj.ObjectId), checksBy.GetValueOrDefault(obj.ObjectId)) is { } reason)
+                    {
+                        SetPart(snapshot, "uncertain", MarkIncomparable(snapshot, reason));
+                        uncertainTables++;
+                    }
                     break;
 
                 case ObjectKind.View:
@@ -309,6 +317,13 @@ internal static class SnapshotBuilder
         }
 
         report.Normalization = sw.Elapsed;
+
+        if (uncertainTables > 0)
+        {
+            report.Warnings.Add(
+                $"{uncertainTables} {(uncertainTables == 1 ? "table has" : "tables have")} CHECK, DEFAULT or computed column " +
+                "definitions that could not be read. They are reported as uncertain instead of equal.");
+        }
 
         // Reference graph, only between objects whose both ends are known.
         var references = new Dictionary<ObjectKey, List<ObjectKey>>(comparer);
