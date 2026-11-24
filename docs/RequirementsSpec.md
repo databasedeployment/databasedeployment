@@ -12,7 +12,7 @@
 | **Product Owner** | İsmail Yeşilyurt (150220009) |
 | **Instructors** | Prof. Dr. Tolga Ovatman, Assoc. Prof. Dr. Ayşe Tosun |
 | **Submission date** | 2026-11-06 |
-| **Document version** | 1.0 |
+| **Document version** | 1.1 |
 
 ---
 
@@ -1085,4 +1085,13 @@ Changes to the Project Plan since version 1.0, as asked in the assignment of thi
 | W3 | A web integration test project was added under tests/unit. | Supports WBS-13.1 to WBS-13.3 and the security checks of NFR-01 and NFR-03. |
 | 2026-11-06 | Project Plan revised to version 1.2 after the TA review: WBS-15.1 comes first, WBS-4.2 consumers corrected, WBS-6.5 moved to W9 before the final WBS-15.4 run, contracts treated as a baseline with a W4 checkpoint, week 10 relieved, new activities WBS-15.6 to WBS-15.9. | Effort 31.75 man-weeks. Finish date unchanged. |
 
-The critical path is now WBS-15.1, WBS-2.1, WBS-6.1 to WBS-6.5 and WBS-15.4, and the project still finishes on 25.12.2026.
+| 2026-11-24 | Project Plan version 1.3: nothing was delivered in W4, so open activities were planned again from W5. Estimates are unchanged, members work up to 1 FTE in weeks 7 to 9, planned work ends on 22.12 and 23.12 to 25.12 are a time buffer. The week 5 work started late and is delivered in week 6. The full web flow is tested in W9. | Effort 31.75 man-weeks. Finish of planned work moves from 25.12 to 22.12. |
+
+The critical path from the re-baseline is WBS-6.2, WBS-6.3, WBS-6.4, WBS-6.5 and WBS-15.4, and planned work ends on 22.12.2026, three days before the code freeze.
+
+### 4.1 Changes to this document
+
+| Version | Date | Section(s) | Change |
+|---|---|---|---|
+| 1.1 | 2026-11-24 | 2.1 | Priorities aligned with the plan: rollback (FR-23) and session cleanup (FR-47) are Must, bidirectional scripts (FR-24) and script review (FR-50) are Should. FR-18 now says how reference cycles are handled. FR-52 to FR-54 removed, T-15 is a technical task. |
+| 1.1 | 2026-11-24 | 3.2, 3.3, 3.4 | UC-02 names its human actors. UC-05 follows FR-17. UC-06 E1 matches FR-18. UC-08 and UC-11 split into single goals: UC-08 Create a migration, UC-15 Apply pending migrations, UC-11 Export a snapshot, UC-17 Compare against a snapshot. The old UC-15 was removed with FR-52 to FR-54. Diagrams and the coverage matrix updated. |
