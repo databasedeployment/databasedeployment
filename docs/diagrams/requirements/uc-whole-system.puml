@@ -26,7 +26,6 @@ rectangle "SchemaDiff" {
   usecase "UC-12 Export a report" as UC12
   usecase "UC-13 Review differences in the web interface" as UC13
   usecase "UC-14 Get AI explanations" as UC14
-  usecase "UC-15 Verify a change in the pipeline" as UC15
   usecase "UC-16 Get started with the documentation" as UC16
 }
 
@@ -37,7 +36,6 @@ DEV --> UC06
 DEV --> UC08
 DEV --> UC11
 DEV --> UC13
-DEV --> UC15
 DBA --> UC01
 DBA --> UC07
 DBA --> UC09
@@ -51,7 +49,6 @@ RM --> UC14
 RM --> UC16
 CI --> UC10
 CI --> UC12
-CI --> UC15
 UC04 ..> UC02 : <<include>>
 UC11 ..> UC02 : <<include>>
 UC06 ..> UC07 : <<include>>

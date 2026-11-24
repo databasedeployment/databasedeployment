@@ -68,7 +68,7 @@ Project Plan.
 | FR-11 | T-03 | D-01 | The system shall normalize module bodies on the T-SQL token stream with options to ignore whitespace, comments, semicolons, keyword casing and identifier quoting, and shall never change string literals. | Must | Golden file tests and an option matrix where each pair differs in one dimension only. |
 | FR-12 | T-03 | D-01 | The system shall compute an XxHash128 hash for every object and for each of its sub-parts (columns, indexes, constraints, foreign keys, body, permissions). | Must | Hash tests prove determinism and that changing one part only changes that part hash. |
 | FR-13 | T-03 | D-01, D-04 | The system shall apply the comparison options chosen by the user: ignore column order, collation, identity seed and increment, fill factor, padding, data compression, system named constraints, and case sensitive object and column names. | Must | Builder tests show that an ignored difference produces the same hash and a respected one does not. |
-| FR-14 | T-04 | D-01 | The system shall classify every object as added, removed, changed, equal or indeterminate by comparing source and target hashes. | Must | Comparing the dev and prod fixtures returns exactly the differences in tests/fixtures/expected.md. |
+| FR-14 | T-04 | D-01 | The system shall classify every object as added, removed, changed, equal or indeterminate by comparing source and target hashes. | Must | Comparing the dev and prod fixtures returns exactly the differences in tests/fixtures/expected.md and none of its traps (end-to-end test). |
 | FR-15 | T-04 | D-01, D-04 | The system shall show the changed sub-parts of a changed object as a change tree (for example Add Column, Alter Column, Drop Index). | Must | Change tree tests for every sub-change kind on fixture pairs. |
 | FR-16 | T-04 | D-01 | The system shall compare every object kind listed in the charter scope, and shall report explicitly any kind it cannot script. | Must | Coverage matrix test: every object kind is either scripted or listed as report only. |
 | FR-17 | T-05 | D-01 | The system shall detect a removed and an added object with identical structure and report them as a rename candidate, without generating sp_rename. | Should | Rename tests on fixture pairs. No sp_rename appears in generated scripts for candidates. |
@@ -106,9 +106,6 @@ Project Plan.
 | FR-49 | T-14 | D-05, D-04 | The system shall explain each deployment risk in plain language and suggest a mitigation. | Should | Every risk finding of the layered fixture receives an explanation. |
 | FR-50 | T-14 | D-05 | The system shall produce review comments on a generated deployment script. | Should | Review output is parsed into comments that reference script lines. |
 | FR-51 | T-14 | D-05 | The system shall send only schema metadata to the AI provider, never row data, use a local model by default and work fully when the AI assistant is disabled. | Must | Prompt logging test finds no row data. All features pass their tests with AI disabled. |
-| FR-52 | T-15 | D-06 | The system shall reproduce exactly the documented differences of the scripted fixture databases. | Must | End-to-end test: dev against prod returns the five differences of expected.md and none of its traps. |
-| FR-53 | T-15 | D-06 | The build pipeline shall build the solution and run every automated test on each pull request and prevent merging when a check fails. | Must | Branch protection requires the build-test check. A failing test blocks the merge. |
-| FR-54 | T-15 | D-06 | The system shall be benchmarked against DacFx on a database with 10,000+ objects and the result shall be recorded. | Should | BenchmarkDotNet report stored with the release. |
 | FR-55 | T-16 | D-07 | The system shall come with a README, a CLI reference, a web interface guide and configuration samples that let a new user install the tool, configure jobs.json and run a comparison. | Must | Two team members who did not write the guide follow it from a clean machine. |
 
 **Functional requirement notes:**
@@ -121,6 +118,8 @@ Project Plan.
   because a false "risky" costs a minute of checking while a false "safe" can lose data.
 - *Shared engine.* The CLI (FR-36 to FR-40) and the web interface (FR-44 to FR-47) use the same Core library
   (D-01, D-02), so both always give the same result for the same input.
+
+FR-52 to FR-54 of version 1.0 were removed in the revision. They described project work (CI pipeline, benchmark, fixture test) rather than behavior of the system. The pipeline is covered by NFR-11, the benchmark by the verification of NFR-04 and the fixture test by the verification of FR-14. T-15 is a technical task without functional requirements of its own.
 
 ### 2.2 Non-functional Requirements
 
@@ -260,7 +259,7 @@ writes the sp_rename call herself, so no data is lost.
 
 **SC-09: A change is verified before it is merged**  
 **Persona:** P-01 Elif (as a contributor to SchemaDiff)  
-**Related requirements:** FR-52 to FR-54
+**Related requirements:** NFR-04, NFR-11
 
 Elif fixes a normalization bug in SchemaDiff itself and opens a pull request. The pipeline builds the solution,
 runs the unit tests and the fixture comparisons, and reports the result on the pull request. The merge button
@@ -313,15 +312,15 @@ Every WBS activity of the Project Plan has a user story, or an explanation when 
 | SC-02 | WBS-13.3 | As a DBA, I want a risk view, comparison settings and the interface in my language, so that I can work comfortably and adjust what counts as a difference. | FR-13, FR-46 |
 | SC-05 | WBS-14.1 | As a release manager, I want the assistant to use a local model by default and the tool to work without it, so that no schema leaves the company unless we decide so. | FR-51 |
 | SC-05 | WBS-14.2 | As a release manager, I want release notes, risk explanations and script review comments in plain language, so that non-specialists understand the release. | FR-48, FR-49, FR-50 |
-| SC-09 | WBS-15.1 | Technical activity: repository, solution and CI. It has no user story of its own and supports SC-09 for contributors. | FR-53 |
-| SC-09 | WBS-15.2 | Technical activity: fixture databases with documented differences used to verify FR-14 to FR-35. | FR-52 |
-| SC-09 | WBS-15.3 | Technical activity: coverage matrix and cross-module tests that prove every object kind is either scripted or reported. | FR-16, FR-52 |
-| SC-09 | WBS-15.4 | Technical activity: end-to-end tests and stabilization on all fixtures before the release. | FR-52, FR-53 |
-| SC-03 | WBS-15.5 | As a BI developer, I want proof that SchemaDiff is much faster than DacFx on a large database, so that I can justify replacing SSDT compare in our nightly runs. | FR-54 |
-| SC-03 | WBS-15.6 | Technical activity: generated 10,000 object database and a first timing in week 6, used by WBS-15.5. | FR-54, NFR-04 |
-| SC-09 | WBS-15.7 | Technical activity: fixture update for the object kinds added by WBS-4.3 and the generators. | FR-16, FR-52 |
+| SC-09 | WBS-15.1 | Technical activity: repository, solution and CI. It has no user story of its own and supports SC-09 for contributors. | NFR-11 |
+| SC-09 | WBS-15.2 | Technical activity: fixture databases with documented differences used to verify FR-14 to FR-35. | FR-14 |
+| SC-09 | WBS-15.3 | Technical activity: coverage matrix and cross-module tests that prove every object kind is either scripted or reported. | FR-14, FR-16 |
+| SC-09 | WBS-15.4 | Technical activity: end-to-end tests and stabilization on all fixtures before the release. | FR-14, NFR-11 |
+| SC-03 | WBS-15.5 | As a BI developer, I want proof that SchemaDiff is much faster than DacFx on a large database, so that I can justify replacing SSDT compare in our nightly runs. | NFR-04 |
+| SC-03 | WBS-15.6 | Technical activity: generated 10,000 object database and a first timing in week 6, used by WBS-15.5. | NFR-04 |
+| SC-09 | WBS-15.7 | Technical activity: fixture update for the object kinds added by WBS-4.3 and the generators. | FR-14, FR-16 |
 | SC-09 | WBS-15.8 | Technical activity: runs on SQL Server 2016 on a Windows machine and LocalDB, with a low-privilege login and on Azure SQL, plus a walkthrough with 3 external users. | NFR-06, NFR-12 |
-| SC-09 | WBS-15.9 | Technical activity: first CLI compare, script and apply pass on the fixtures, reported in the Test Specification. | FR-52, FR-53 |
+| SC-09 | WBS-15.9 | Technical activity: first CLI compare, script and apply pass on the fixtures, reported in the Test Specification. | FR-14, NFR-11 |
 | SC-10 | WBS-16.1 | As a new user, I want a README, a CLI reference and a web guide, so that I can install and use the tool without asking the team. | FR-55 |
 | SC-10 | WBS-16.2 | Technical activity: demo scenario and presentation material for the final demo. It has no user story. | FR-55 |
 
@@ -402,12 +401,12 @@ matrix in 3.4.1.
 **Functionality covered:** T-14 / FR-48 to FR-51 / UC-14  
 **Diagram notes:** The assistant is optional. Each output is a separate request that sends schema metadata only.
 
-#### 3.3.10 Functionality-Specific Use Case Diagram — Quality and Documentation
+#### 3.3.10 Functionality-Specific Use Case Diagram — Documentation
 
-![Quality and Documentation use case diagram](images/requirements/uc-quality-docs.png)
+![Documentation use case diagram](images/requirements/uc-quality-docs.png)
 
-**Functionality covered:** T-15, T-16 / FR-52 to FR-55 / UC-15, UC-16  
-**Diagram notes:** Contributors and the pipeline verify every change against the fixture databases. New users start from the documentation.
+**Functionality covered:** T-16 / FR-55 / UC-16  
+**Diagram notes:** New users start from the documentation. T-15 (testing and quality) is a technical task and has no use case of its own.
 
 ### 3.4 Use Cases
 
@@ -431,7 +430,7 @@ Every task of the Project Plan has at least one detailed use case below.
 | T-12 | FR-43 | UC-12 | SC-03, SC-05 |
 | T-13 | FR-44 to FR-47 | UC-13 | SC-01 |
 | T-14 | FR-48 to FR-51 | UC-14 | SC-05 |
-| T-15 | FR-52 to FR-54 | UC-15 | SC-09 |
+| T-15 | none (technical task, verified through FR-14, NFR-04 and NFR-11) | none | SC-09 |
 | T-16 | FR-55 | UC-16 | SC-10 |
 
 All sixteen tasks of Project Plan Section 1.3 are covered. Optional scope items of the plan (cloud AI provider,
@@ -971,41 +970,6 @@ A comparison exists and the AI assistant is enabled with a local model or a conf
 
 **Post-condition(s):**
 The user has an explanation, and no row data has left the machine.
-
-#### 3.4.16 UC-15 — Verify a change in the pipeline
-
-| Field | Description |
-|---|---|
-| **Use case ID** | UC-15 |
-| **Use case name** | Verify a change in the pipeline |
-| **Goal / Purpose** | Make sure a change to SchemaDiff works before it is merged. |
-| **Actor(s)** | UT-01 Database Developer as contributor, UT-05 CI/CD pipeline (primary). |
-| **Related Project Plan task(s)** | T-15 |
-| **Related functional requirement(s)** | FR-52 to FR-54 |
-
-**Pre-condition(s):**
-A pull request is open against main.
-
-**Main success flow:**
-
-1. **Actor:** Pushes commits to the pull request branch.
-2. **System:** Builds the solution on Windows and runs the unit, integration and fixture tests.
-3. **System:** Publishes test results and coverage and reports the check on the pull request.
-4. **Actor:** A teammate reviews and approves the change.
-5. **System:** Allows the merge once the check is green and the approval is present.
-
-**Alternative flows:**
-
-- **A1 — Benchmark run (branches from step 2):**
-  1. Before a release the benchmark job runs against the 10,000 object database.
-  2. The result is stored with the release.
-
-**Exception / error flows:**
-
-- **E1 — A test fails (occurs at step 2):** The check turns red, the merge stays blocked and the failing test is listed in the results.
-
-**Post-condition(s):**
-Only changes with green checks and an approval reach main.
 
 #### 3.4.17 UC-16 — Get started with the documentation
 
