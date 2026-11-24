@@ -222,4 +222,85 @@ public class PermissionCheckTests
         Assert.Contains(report.Warnings, w => w.Contains("1 table", StringComparison.Ordinal)
                                               && w.Contains("uncertain", StringComparison.Ordinal));
     }
+
+    // Optional details that feed the hash
+
+    private static ExtractionReport Failed(string query)
+    {
+        var report = new ExtractionReport();
+        report.FailedQueries.Add(query);
+        return report;
+    }
+
+    private static CatalogSet WithTypedXml() => Catalog(c =>
+    {
+        c.Columns.Add(Col(4, "Profile") with { TypeName = "xml", MaxLength = -1, XmlCollectionId = 65536 });
+        c.XmlSchemaCollections = [new XmlSchemaCollectionRow(65536, "dbo", "ProfileSchema")];
+    });
+
+    private static CatalogSet WithPeriod() => Catalog(c =>
+    {
+        c.Columns.Add(Col(4, "ValidFrom") with { TypeName = "datetime2", GeneratedAlwaysType = 1 });
+        c.Columns.Add(Col(5, "ValidTo") with { TypeName = "datetime2", GeneratedAlwaysType = 2 });
+        c.Temporal = [new TemporalRow(CustomerId, "dbo", "CustomerHistory", "ValidFrom", "ValidTo")];
+    });
+
+    [Fact]
+    public void Typed_xml_column_is_uncertain_when_collections_could_not_be_read()
+    {
+        var catalog = WithTypedXml();
+        catalog.XmlSchemaCollections = [];
+
+        var table = Customer(catalog, Failed("xmlSchemaCollections"));
+
+        Assert.True(table.Incomparable);
+        Assert.Contains("Profile", table.IncomparableReason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Typed_xml_column_stays_comparable_when_collections_were_read()
+    {
+        Assert.False(Customer(WithTypedXml()).Incomparable);
+    }
+
+    [Fact]
+    public void Failed_collection_query_does_not_touch_tables_without_typed_xml()
+    {
+        Assert.False(Customer(Catalog(), Failed("xmlSchemaCollections")).Incomparable);
+    }
+
+    [Fact]
+    public void Period_columns_are_uncertain_when_system_versioning_could_not_be_read()
+    {
+        var catalog = WithPeriod();
+        catalog.Temporal = [];
+
+        var table = Customer(catalog, Failed("temporal"));
+
+        Assert.True(table.Incomparable);
+        Assert.Contains("system versioning", table.IncomparableReason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Temporal_table_stays_comparable_when_system_versioning_was_read()
+    {
+        var table = Customer(WithPeriod());
+
+        Assert.False(table.Incomparable);
+        Assert.Contains("temporal", table.Parts.Keys);
+    }
+
+    [Fact]
+    public void Every_unreadable_detail_is_listed_in_the_reason()
+    {
+        var catalog = WithTypedXml();
+        catalog.CheckConstraints[0] = catalog.CheckConstraints[0] with { Definition = null };
+
+        var reason = PermissionCheck.UnreadableTableReason(
+            catalog.Columns, catalog.CheckConstraints, new HashSet<string> { "xmlSchemaCollections" });
+
+        Assert.NotNull(reason);
+        Assert.Contains("CK_Customer_Status", reason, StringComparison.Ordinal);
+        Assert.Contains("Profile", reason, StringComparison.Ordinal);
+    }
 }
