@@ -19,13 +19,14 @@ rectangle "SchemaDiff" {
   usecase "UC-05 Review rename candidates" as UC05
   usecase "UC-06 Generate a deployment script" as UC06
   usecase "UC-07 Analyze deployment risk" as UC07
-  usecase "UC-08 Create and apply a migration" as UC08
+  usecase "UC-08 Create a migration" as UC08
   usecase "UC-09 Execute a deployment script" as UC09
   usecase "UC-10 Run comparison jobs from the CLI" as UC10
   usecase "UC-11 Export a snapshot" as UC11
   usecase "UC-12 Export a report" as UC12
   usecase "UC-13 Review differences in the web interface" as UC13
   usecase "UC-14 Get AI explanations" as UC14
+  usecase "UC-15 Apply pending migrations" as UC15
   usecase "UC-16 Get started with the documentation" as UC16
   usecase "UC-17 Compare against a snapshot" as UC17
 }
@@ -44,18 +45,19 @@ DBA --> UC11
 DBA --> UC13
 BI --> UC05
 BI --> UC10
-RM --> UC08
+RM --> UC15
 RM --> UC12
 RM --> UC14
 RM --> UC16
 CI --> UC10
 CI --> UC12
+CI --> UC15
 UC04 ..> UC02 : <<include>>
 UC11 ..> UC02 : <<include>>
 UC17 ..> UC02 : <<include>>
 UC06 ..> UC07 : <<include>>
 UC02 --> SQL
-UC08 --> SQL
+UC15 --> SQL
 UC09 --> SQL
 UC14 --> AI
 @enduml

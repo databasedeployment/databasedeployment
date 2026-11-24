@@ -370,8 +370,8 @@ matrix in 3.4.1.
 
 ![Migrations use case diagram](images/requirements/uc-migrations.png)
 
-**Functionality covered:** T-08 / FR-29 to FR-32 / UC-08  
-**Diagram notes:** A migration is always saved as a versioned pair of files. Applying and drift detection read and write the history table on the target.
+**Functionality covered:** T-08 / FR-29 to FR-32 / UC-08, UC-15  
+**Diagram notes:** Creating a migration (UC-08) always saves a versioned pair of files. Applying pending migrations (UC-15) and the drift check read and write the history table on the target.
 
 #### 3.3.6 Functionality-Specific Use Case Diagram — Command Line and Reports
 
@@ -423,7 +423,7 @@ Every task of the Project Plan has at least one detailed use case below.
 | T-05 | FR-17 | UC-05 | SC-08 |
 | T-06 | FR-18 to FR-24 | UC-06 | SC-04 |
 | T-07 | FR-25 to FR-28 | UC-07 | SC-02 |
-| T-08 | FR-29 to FR-32 | UC-08 | SC-06 |
+| T-08 | FR-29 to FR-32 | UC-08, UC-15 | SC-06 |
 | T-09 | FR-33 to FR-35 | UC-09 | SC-04 |
 | T-10 | FR-36 to FR-40 | UC-10 | SC-03 |
 | T-11 | FR-41, FR-42 | UC-11, UC-17 | SC-07 |
@@ -716,42 +716,38 @@ A comparison with changed tables exists and the target row counts were read wher
 **Post-condition(s):**
 Every risky table change is visible with its reason and row count, and safe mode excludes the data loss steps.
 
-#### 3.4.9 UC-08 — Create and apply a migration
+#### 3.4.9 UC-08 — Create a migration
 
 | Field | Description |
 |---|---|
 | **Use case ID** | UC-08 |
-| **Use case name** | Create and apply a migration |
-| **Goal / Purpose** | Turn a reviewed comparison into a repeatable, versioned change and apply it to other environments. |
-| **Actor(s)** | UT-01 Database Developer, UT-04 Release Manager (primary). UT-06 SQL Server (secondary). |
+| **Use case name** | Create a migration |
+| **Goal / Purpose** | Turn a reviewed comparison into a repeatable, versioned change. |
+| **Actor(s)** | UT-01 Database Developer (primary). |
 | **Related Project Plan task(s)** | T-08 |
-| **Related functional requirement(s)** | FR-29 to FR-32 |
+| **Related functional requirement(s)** | FR-29 |
 
-**Pre-condition(s):**
+**Pre-condition(s):**  
 A reviewed comparison exists (UC-04, UC-06) and a migrations folder is configured.
 
 **Main success flow:**
 
 1. **Actor:** Saves the comparison as a migration with a description.
-2. **System:** Writes `V###__description.sql` and its rollback file with the next version number.
-3. **Actor:** Selects a target database and lists pending migrations.
-4. **System:** Reads the `__SchemaDiffMigrations` history table and shows the versions not yet applied.
-5. **Actor:** Applies the pending migrations.
-6. **System:** Executes them in version order (UC-09) and records each version with its checksum.
+2. **System:** Generates the deployment and rollback scripts (UC-06) for the selected objects.
+3. **System:** Writes `V###__description.sql` and its rollback file with the next version number.
 
 **Alternative flows:**
 
-- **A1 — Drift check (branches from step 3):**
-  1. The actor runs the drift check.
-  2. The system compares the live schema with the state expected after the last applied migration and lists the differences.
+- **A1 — Nothing selected (branches from step 1):**
+  1. No object of the comparison is selected.
+  2. The system writes no file and asks the actor to select objects.
 
 **Exception / error flows:**
 
-- **E1 — Checksum mismatch (occurs at step 4):** An applied migration file was changed afterwards. The system stops and names the version, because applying on top of an edited history would hide the change.
-- **E2 — Migration fails (occurs at step 6):** The transaction of the failing migration is rolled back, it is not recorded, and the following migrations are not applied.
+- **E1 — Version already used (occurs at step 3):** A file with the next version already exists. The system stops and names the file instead of overwriting it.
 
-**Post-condition(s):**
-The target is at the latest version and the history table matches the migration files.
+**Post-condition(s):**  
+A new pair of migration files with the next version number exists in the migrations folder.
 
 #### 3.4.10 UC-09 — Execute a deployment script
 
@@ -968,6 +964,41 @@ A comparison exists and the AI assistant is enabled with a local model or a conf
 
 **Post-condition(s):**
 The user has an explanation, and no row data has left the machine.
+
+#### 3.4.16 UC-15 — Apply pending migrations
+
+| Field | Description |
+|---|---|
+| **Use case ID** | UC-15 |
+| **Use case name** | Apply pending migrations |
+| **Goal / Purpose** | Bring another environment to the latest migration version and keep its history. |
+| **Actor(s)** | UT-04 Release Manager (primary), UT-05 CI/CD pipeline (primary). UT-06 SQL Server (secondary). |
+| **Related Project Plan task(s)** | T-08 |
+| **Related functional requirement(s)** | FR-30 to FR-32 |
+
+**Pre-condition(s):**  
+Migration files created with UC-08 exist and the actor can connect to the target database.
+
+**Main success flow:**
+
+1. **Actor:** Selects a target database and lists pending migrations.
+2. **System:** Reads the `__SchemaDiffMigrations` history table and shows the versions not yet applied.
+3. **Actor:** Applies the pending migrations.
+4. **System:** Executes them in version order (UC-09) and records each version with its checksum.
+
+**Alternative flows:**
+
+- **A1 — Drift check (branches from step 1):**
+  1. The actor runs the drift check.
+  2. The system compares the live schema with the state expected after the last applied migration and lists the differences.
+
+**Exception / error flows:**
+
+- **E1 — Checksum mismatch (occurs at step 2):** An applied migration file was changed afterwards. The system stops and names the version, because applying on top of an edited history would hide the change.
+- **E2 — Migration fails (occurs at step 4):** The transaction of the failing migration is rolled back, it is not recorded, and the following migrations are not applied.
+
+**Post-condition(s):**  
+The target is at the latest version and the history table matches the migration files.
 
 #### 3.4.17 UC-16 — Get started with the documentation
 
