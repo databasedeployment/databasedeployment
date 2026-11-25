@@ -744,52 +744,15 @@ internal static class SnapshotBuilder
 
     // Helpers
 
-    private static void SetPart(ObjectSnapshot snapshot, string name, string canonical)
-    {
-        if (canonical.Length == 0) return;
-        snapshot.PartCanonical[name] = canonical;
-        snapshot.Parts[name] = Hash.Of(canonical);
-    }
+    // Part hashing rules live in PartHasher. These wrappers keep the call sites above short.
 
-    /// <summary>
-    /// Like <see cref="SetPart"/>, but the hash is computed with the line name (fields[1])
-    /// lowercased while PartCanonical keeps the raw text, so the tree shows index and constraint
-    /// names with their real casing. In case-insensitive mode a name that only changed its casing
-    /// does not change the hash and the object is not shown as changed for nothing. Only the name
-    /// token is folded. Values (definition, expression, column list) go into the hash unchanged,
-    /// so real value differences are not masked.
-    /// </summary>
-    private static void SetPartFoldNames(ObjectSnapshot snapshot, string name, string canonical, SnapshotOptions options)
-    {
-        if (canonical.Length == 0) return;
-        snapshot.PartCanonical[name] = canonical;
-        snapshot.Parts[name] = Hash.Of(options.CaseSensitiveNames ? canonical : FoldLineNames(canonical));
-    }
+    private static void SetPart(ObjectSnapshot snapshot, string name, string canonical) =>
+        PartHasher.Set(snapshot, name, canonical);
 
-    /// <summary>Lowercases the name field of every line in a canonical text (the token after the
-    /// first "|"). The rest of the line is unchanged. Only used as hash input.</summary>
-    private static string FoldLineNames(string canonical)
-    {
-        var lines = canonical.Split('\n');
-        for (var i = 0; i < lines.Length; i++)
-        {
-            var f = lines[i].Split('|');
-            if (f.Length >= 2 && f[1].Length > 0)
-            {
-                f[1] = f[1].ToLowerInvariant();
-                lines[i] = string.Join('|', f);
-            }
-        }
-        return string.Join('\n', lines);
-    }
+    private static void SetPartFoldNames(ObjectSnapshot snapshot, string name, string canonical, SnapshotOptions options) =>
+        PartHasher.SetFoldingNames(snapshot, name, canonical, options.CaseSensitiveNames);
 
-    private static void Finalize(ObjectSnapshot snapshot)
-    {
-        var ordered = snapshot.Parts.OrderBy(p => p.Key, StringComparer.Ordinal).ToList();
-        snapshot.Hash = Hash.Combine(ordered.Select(p => p.Value));
-        snapshot.Canonical = string.Join('\n',
-            ordered.Select(p => $"-- [{p.Key}]\n{snapshot.PartCanonical[p.Key]}"));
-    }
+    private static void Finalize(ObjectSnapshot snapshot) => PartHasher.Seal(snapshot);
 
     private static string MarkIncomparable(ObjectSnapshot snapshot, string reason)
     {
