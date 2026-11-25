@@ -1,0 +1,19 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-04\nRelease Manager" as RM
+actor "UT-06\nSQL Server" as SQL
+rectangle "Migrations" {
+  usecase "UC-08 Create a migration" as UC08
+  usecase "Save versioned migration" as SV
+  usecase "UC-15 Apply pending migrations" as UC15
+  usecase "Detect drift" as DR
+}
+DEV --> UC08
+RM --> UC15
+UC08 ..> SV : <<include>>
+DR ..> UC15 : <<extend>>
+UC15 --> SQL
+DR --> SQL
+@enduml

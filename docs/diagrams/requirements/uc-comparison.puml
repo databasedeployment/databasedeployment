@@ -1,0 +1,22 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-03\nBI / ETL Developer" as BI
+actor "UT-06\nSQL Server" as SQL
+rectangle "Extraction and comparison" {
+  usecase "UC-04 Compare two databases" as UC04
+  usecase "UC-02 Extract a schema" as UC02
+  usecase "UC-03 Configure comparison options" as UC03
+  usecase "UC-05 Review rename candidates" as UC05
+  usecase "Probe catalog coverage" as PR
+}
+DEV --> UC04
+DEV --> UC03
+BI --> UC05
+UC04 ..> UC02 : <<include>>
+UC03 ..> UC04 : <<extend>>
+UC05 ..> UC04 : <<extend>>
+PR ..> UC02 : <<extend>>
+UC02 --> SQL
+@enduml

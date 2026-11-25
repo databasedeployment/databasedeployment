@@ -1,0 +1,11 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-04\nRelease Manager" as RM
+rectangle "Documentation" {
+  usecase "UC-16 Get started with the documentation" as UC16
+}
+DEV --> UC16
+RM --> UC16
+@enduml
