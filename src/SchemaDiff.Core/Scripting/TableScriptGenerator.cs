@@ -5,6 +5,12 @@ namespace SchemaDiff.Core.Scripting;
 
 public sealed record TableScriptOptions
 {
+    /// <summary>
+    /// Drop tables that exist on the target but not in the source. A dropped table loses its
+    /// rows, so every drop is also listed in <see cref="TableScriptResult.DataLossActions"/>.
+    /// </summary>
+    public bool IncludeDrops { get; init; } = true;
+
     public static readonly TableScriptOptions Default = new();
 }
 
@@ -29,7 +35,8 @@ public sealed record TableScriptResult(
 /// <summary>
 /// Produces the deployment script for table differences. New tables are created from their
 /// display script in foreign key order, so a referenced table always exists before the table
-/// that points at it.
+/// that points at it. Removed tables are dropped in the reverse order of the target, so the
+/// owner of a foreign key goes before the table it references.
 /// </summary>
 public static class TableScriptGenerator
 {
@@ -43,6 +50,7 @@ public static class TableScriptGenerator
         var gated = new List<GatedAction>();
 
         var creates = new List<ObjectKey>();
+        var drops = new List<ObjectKey>();
 
         foreach (var diff in result.Differences)
         {
@@ -56,6 +64,9 @@ public static class TableScriptGenerator
                 case DiffKind.Added:
                     creates.Add(diff.Key);
                     break;
+                case DiffKind.Removed:
+                    drops.Add(diff.Key);
+                    break;
             }
         }
 
@@ -64,6 +75,13 @@ public static class TableScriptGenerator
         var orderedCreates = DependencyOrder.Order(creates, result.Source.References, comparer, out var hadCycle);
         foreach (var key in orderedCreates)
             EmitCreate(sb, key, result, included, skipped);
+
+        // Removed tables exist on the target, so the target's reference graph decides the order.
+        var orderedDrops = DependencyOrder.Order(drops, result.Target.References, comparer, out var dropCycle);
+        orderedDrops.Reverse();
+        hadCycle |= dropCycle;
+        foreach (var key in orderedDrops)
+            EmitDrop(sb, key, result, options, included, skipped, gated);
 
         return new TableScriptResult(sb.ToString(), included, skipped, gated, hadCycle);
     }
@@ -90,4 +108,40 @@ public static class TableScriptGenerator
         sb.AppendLine();
         included.Add(key);
     }
+
+    // DROP
+
+    private static void EmitDrop(
+        StringBuilder sb, ObjectKey key, CompareResult result, TableScriptOptions options,
+        List<ObjectKey> included, List<SkippedObject> skipped, List<GatedAction> gated)
+    {
+        if (!options.IncludeDrops)
+        {
+            skipped.Add(new SkippedObject(key, "drops are turned off, the table stays on the target"));
+            return;
+        }
+
+        var rows = result.Target.Objects.TryGetValue(key, out var target) ? target.RowCount : null;
+        var qualified = Qualified(key);
+        var sql = $"DROP TABLE {qualified};";
+
+        gated.Add(new GatedAction(key, "(table)",
+            rows is > 0 ? $"Table is dropped, {rows} rows are lost" : "Table is dropped", sql));
+
+        sb.AppendLine($"IF OBJECT_ID(N'{Literal(qualified)}', N'U') IS NOT NULL");
+        sb.AppendLine($"    {sql}");
+        sb.AppendLine("GO");
+        sb.AppendLine();
+        included.Add(key);
+    }
+
+    // Helpers
+
+    /// <summary>Bracketed identifier. A closing bracket inside the name is doubled.</summary>
+    private static string Id(string name) => "[" + name.Replace("]", "]]") + "]";
+
+    private static string Qualified(ObjectKey key) => $"{Id(key.Schema)}.{Id(key.Name)}";
+
+    /// <summary>Text for an N'...' literal, with single quotes doubled.</summary>
+    private static string Literal(string value) => value.Replace("'", "''");
 }
