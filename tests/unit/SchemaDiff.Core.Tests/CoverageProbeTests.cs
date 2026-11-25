@@ -118,4 +118,45 @@ public class CoverageProbeTests
 
         Assert.Equal(["Sequences", "Synonyms"], report.Gaps.Select(g => g.Item));
     }
+
+    // Permission awareness
+
+    private static CoverageReport Report(bool hasViewDefinition = true, params CoverageItem[] items) =>
+        new("S", "D", "16.0", items, TimeSpan.Zero, hasViewDefinition);
+
+    [Fact]
+    public void Unreadable_modules_are_probed_and_counted()
+    {
+        Assert.Contains(CoverageProbe.Probes, p => p.Item == CoverageProbe.UnreadableModulesItem);
+
+        var report = Report(true, new CoverageItem("Module", CoverageProbe.UnreadableModulesItem, false, 7, null));
+
+        Assert.Equal(7, report.UnreadableModules);
+    }
+
+    [Fact]
+    public void Unreadable_modules_default_to_zero_when_the_probe_failed()
+    {
+        var report = Report(true, new CoverageItem("Module", CoverageProbe.UnreadableModulesItem, false, null, "denied"));
+
+        Assert.Equal(0, report.UnreadableModules);
+        Assert.Single(report.Failed);
+    }
+
+    [Fact]
+    public void Report_is_complete_only_with_permission_and_no_failed_probe()
+    {
+        var ok = new CoverageItem("Table", "Tables", true, 4, null);
+        var failed = new CoverageItem("Security", "Row-Level Security (security policies)", false, null, "Invalid object name");
+
+        Assert.True(Report(true, ok).IsComplete);
+        Assert.False(Report(false, ok).IsComplete);
+        Assert.False(Report(true, ok, failed).IsComplete);
+    }
+
+    [Fact]
+    public void Header_checks_view_definition_like_the_extraction_preflight()
+    {
+        Assert.Contains("HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'VIEW DEFINITION')", CoverageProbe.HeaderSql, StringComparison.Ordinal);
+    }
 }

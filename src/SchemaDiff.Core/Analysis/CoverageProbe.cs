@@ -10,13 +10,31 @@ namespace SchemaDiff.Core.Analysis;
 public sealed record CoverageItem(
     string Category, string Item, bool Covered, long? Count, string? Error);
 
+/// <param name="HasViewDefinition">
+/// Whether the user holds VIEW DEFINITION on the database. Without it the catalog views only show
+/// objects the user has some other permission on, so every count can be too low and the gap list
+/// can look shorter than it is.
+/// </param>
 public sealed record CoverageReport(
     string Server, string Database, string ProductVersion,
-    IReadOnlyList<CoverageItem> Items, TimeSpan Elapsed)
+    IReadOnlyList<CoverageItem> Items, TimeSpan Elapsed, bool HasViewDefinition = true)
 {
     /// <summary>Classes the comparison does not cover but the database really contains. This is the to-do list.</summary>
     public IReadOnlyList<CoverageItem> Gaps =>
         [.. Items.Where(i => !i.Covered && i.Count > 0).OrderByDescending(i => i.Count)];
+
+    /// <summary>Probes that could not run. Their class is unknown on this server, not empty.</summary>
+    public IReadOnlyList<CoverageItem> Failed => [.. Items.Where(i => i.Error is not null)];
+
+    /// <summary>
+    /// Modules whose definition is NULL (encrypted or hidden by missing permissions). The comparison
+    /// reports them as uncertain, so a high number means a large part of the result is not decided.
+    /// </summary>
+    public long UnreadableModules =>
+        Items.FirstOrDefault(i => i.Item == CoverageProbe.UnreadableModulesItem)?.Count ?? 0;
+
+    /// <summary>True when the counts can be trusted: VIEW DEFINITION is held and every probe ran.</summary>
+    public bool IsComplete => HasViewDefinition && Failed.Count == 0;
 }
 
 /// <summary>
@@ -31,6 +49,8 @@ public sealed record CoverageReport(
 /// </summary>
 public static class CoverageProbe
 {
+    internal const string UnreadableModulesItem = "Encrypted or unreadable modules";
+
     // Covered reflects what the catalog extraction reads today. Classes that are not covered yet
     // are probed as well, and a count above zero puts them on the gap list.
     internal static readonly (string Category, string Item, bool Covered, string Sql)[] Probes =
@@ -53,7 +73,7 @@ public static class CoverageProbe
         ("Module", "DML triggers", true, "SELECT COUNT(*) FROM sys.triggers WHERE parent_class = 1 AND is_ms_shipped = 0"),
 
         // Not covered yet. A count above zero is a gap.
-        ("Module", "Encrypted or unreadable modules", false, "SELECT COUNT(*) FROM sys.sql_modules m JOIN sys.objects o ON o.object_id = m.object_id WHERE o.is_ms_shipped = 0 AND m.definition IS NULL"),
+        ("Module", UnreadableModulesItem, false, "SELECT COUNT(*) FROM sys.sql_modules m JOIN sys.objects o ON o.object_id = m.object_id WHERE o.is_ms_shipped = 0 AND m.definition IS NULL"),
         ("Other", "Sequences", false, "SELECT COUNT(*) FROM sys.sequences WHERE is_ms_shipped = 0"),
         ("Other", "Synonyms", false, "SELECT COUNT(*) FROM sys.synonyms WHERE is_ms_shipped = 0"),
         ("Trigger", "DDL triggers", false, "SELECT COUNT(*) FROM sys.triggers WHERE parent_class = 0 AND is_ms_shipped = 0"),
@@ -99,6 +119,15 @@ public static class CoverageProbe
         ("Legacy", "CREATE RULE and CREATE DEFAULT objects", false, "SELECT COUNT(*) FROM sys.objects WHERE is_ms_shipped = 0 AND type IN ('R', 'D') AND parent_object_id = 0"),
     ];
 
+    // Same permission check as the extraction preflight, so the probe and the comparison agree.
+    internal const string HeaderSql = """
+        SELECT
+            CONVERT(nvarchar(256), SERVERPROPERTY('ServerName')),
+            DB_NAME(),
+            CONVERT(nvarchar(64), SERVERPROPERTY('ProductVersion')),
+            CONVERT(int, HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'VIEW DEFINITION'));
+        """;
+
     public static async Task<CoverageReport> RunAsync(string connectionString, CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -107,9 +136,8 @@ public static class CoverageProbe
         await connection.OpenAsync(ct);
 
         string server = connection.DataSource, database = connection.Database, version = "?";
-        await using (var header = new SqlCommand(
-            "SELECT CONVERT(nvarchar(256), SERVERPROPERTY('ServerName')), DB_NAME(), CONVERT(nvarchar(64), SERVERPROPERTY('ProductVersion'))",
-            connection))
+        var hasViewDefinition = false;
+        await using (var header = new SqlCommand(HeaderSql, connection))
         await using (var reader = await header.ExecuteReaderAsync(ct))
         {
             if (await reader.ReadAsync(ct))
@@ -117,6 +145,7 @@ public static class CoverageProbe
                 if (!reader.IsDBNull(0)) server = reader.GetString(0);
                 database = reader.GetString(1);
                 if (!reader.IsDBNull(2)) version = reader.GetString(2);
+                hasViewDefinition = !reader.IsDBNull(3) && reader.GetInt32(3) == 1;
             }
         }
 
@@ -126,7 +155,7 @@ public static class CoverageProbe
             return await command.ExecuteScalarAsync(token);
         }, ct);
 
-        return new CoverageReport(server, database, version, items, stopwatch.Elapsed);
+        return new CoverageReport(server, database, version, items, stopwatch.Elapsed, hasViewDefinition);
     }
 
     /// <summary>
