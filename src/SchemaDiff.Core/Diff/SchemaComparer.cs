@@ -20,6 +20,11 @@ public static class SchemaComparer
         var differences = new List<ObjectDiff>();
         var equalCount = 0;
 
+        // Keys always match case-insensitively. A difference in name casing ([GetCustomer] and
+        // [getcustomer]) only counts when the case-sensitive names option is on, and then it shows
+        // up as a single "name" change. With the option off the two spellings are equal.
+        var reportNameCase = source.CaseSensitiveNames;
+
         foreach (var (key, sourceObject) in source.Objects)
         {
             if (!target.Objects.TryGetValue(key, out var targetObject))
@@ -28,13 +33,30 @@ public static class SchemaComparer
                 continue;
             }
 
-            if (sourceObject.Hash == targetObject.Hash)
+            // An object whose definition could not be read is never equal, even when the hashes
+            // match. Both sides may hash the same placeholder text, and a silent "equal" is the
+            // most dangerous result a comparison can give.
+            if (sourceObject.Incomparable || targetObject.Incomparable)
             {
-                equalCount++;
+                differences.Add(new ObjectDiff(key, DiffKind.Indeterminate,
+                    [sourceObject.IncomparableReason ?? targetObject.IncomparableReason ?? "unknown"]));
                 continue;
             }
 
-            differences.Add(new ObjectDiff(key, DiffKind.Changed, []));
+            var nameCaseDiff = reportNameCase &&
+                (!string.Equals(key.Schema, targetObject.Key.Schema, StringComparison.Ordinal) ||
+                 !string.Equals(key.Name, targetObject.Key.Name, StringComparison.Ordinal));
+
+            if (sourceObject.Hash == targetObject.Hash)
+            {
+                if (!nameCaseDiff) { equalCount++; continue; }
+                differences.Add(new ObjectDiff(key, DiffKind.Changed, ["name"]));
+                continue;
+            }
+
+            var parts = ChangedParts(sourceObject, targetObject);
+            if (nameCaseDiff && !parts.Contains("name")) parts.Add("name");
+            differences.Add(new ObjectDiff(key, DiffKind.Changed, parts));
         }
 
         foreach (var (key, _) in target.Objects)
@@ -62,5 +84,27 @@ public static class SchemaComparer
             EqualCount = equalCount,
             CompareTime = sw.Elapsed,
         };
+    }
+
+    /// <summary>
+    /// Reads which parts of an object changed from the sub-part hashes, so "only the indexes of
+    /// this table changed" is known without running a text diff. A part that exists on one side
+    /// only counts as changed.
+    /// </summary>
+    private static List<string> ChangedParts(ObjectSnapshot source, ObjectSnapshot target)
+    {
+        var changed = new List<string>();
+
+        foreach (var (part, hash) in source.Parts)
+        {
+            if (!target.Parts.TryGetValue(part, out var targetHash)) changed.Add(part);
+            else if (hash != targetHash) changed.Add(part);
+        }
+
+        foreach (var (part, _) in target.Parts)
+            if (!source.Parts.ContainsKey(part)) changed.Add(part);
+
+        changed.Sort(StringComparer.Ordinal);
+        return changed;
     }
 }
