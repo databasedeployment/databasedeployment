@@ -223,3 +223,159 @@ Technical activities have a short note instead of a story.
 | US-42 | SC-09 | WBS-15.9 | Technical: first CLI compare, script and apply pass. | FR-14, NFR-11 |
 | US-43 | SC-10 | WBS-16.1 | As a new user, I want a README, CLI reference and web guide. | FR-55 |
 | US-44 | SC-10 | WBS-16.2 | Technical: demo scenario and presentation material. | FR-55 |
+
+<!-- pagebreak -->
+
+### 3.3 Use Case Diagrams
+
+UML diagrams, PlantUML sources in `docs/diagrams/requirements-analysis`.
+
+#### 3.3.1 Whole-System Use Case Diagram
+
+![Whole-system use case diagram](images/requirements-analysis/uc-whole-system.png)
+
+UT-01 to UT-05 start use cases, SQL Server (UT-06) and the AI provider (UT-07) are secondary. UC-04, UC-11 and
+UC-17 include UC-02, and UC-06 includes UC-07 so safe mode always has a risk classification.
+
+#### 3.3.2 Connection Management
+
+![Connection management](images/requirements-analysis/uc-connection.png)
+
+T-01, UC-01. Testing is included, recent connections and stored passwords extend it.
+
+#### 3.3.3 Extraction and Comparison
+
+![Extraction and comparison](images/requirements-analysis/uc-comparison.png)
+
+T-02 to T-05, UC-02 to UC-05. Comparing includes extraction, the other cases are optional.
+
+#### 3.3.4 Deployment Script, Risk and Execution
+
+![Deployment, risk and execution](images/requirements-analysis/uc-deployment.png)
+
+T-06, T-07, T-09, UC-06, UC-07, UC-09. Rollback and trigger report are optional.
+
+#### 3.3.5 Migrations
+
+![Migrations](images/requirements-analysis/uc-migrations.png)
+
+T-08, UC-08, UC-15. Applying and drift check use the history table.
+
+#### 3.3.6 Command Line and Reports
+
+![Command line and reports](images/requirements-analysis/uc-cli-reports.png)
+
+T-10, T-12, UC-10, UC-12. Every CLI run selects jobs.
+
+#### 3.3.7 Snapshots
+
+![Snapshots](images/requirements-analysis/uc-snapshots.png)
+
+T-11, UC-11, UC-17. The DBA exports, the developer compares.
+
+#### 3.3.8 Web Interface
+
+![Web interface](images/requirements-analysis/uc-web.png)
+
+T-13, UC-13. Progress and side-by-side view are included, settings extend it.
+
+#### 3.3.9 AI Assistant
+
+![AI assistant](images/requirements-analysis/uc-ai.png)
+
+T-14, UC-14. Every request sends schema metadata only.
+
+#### 3.3.10 Documentation
+
+![Documentation](images/requirements-analysis/uc-quality-docs.png)
+
+T-16, UC-16. T-15 is technical and has no use case.
+
+### 3.4 Use Cases
+
+#### 3.4.1 Use Case Coverage Matrix
+
+| Project Plan task ID | Functional requirement ID(s) | Use case ID(s) | Scenario ID(s) |
+|-----|----------|------|------|
+| T-01 | FR-01 to FR-05 | UC-01 | SC-01 |
+| T-02 | FR-06 to FR-10 | UC-02 | SC-01, SC-02 |
+| T-03 | FR-11 to FR-13 | UC-03 | SC-01 |
+| T-04 | FR-14 to FR-16 | UC-04 | SC-01 |
+| T-05 | FR-17 | UC-05 | SC-08 |
+| T-06 | FR-18 to FR-24 | UC-06 | SC-04 |
+| T-07 | FR-25 to FR-28 | UC-07 | SC-02 |
+| T-08 | FR-29 to FR-32 | UC-08, UC-15 | SC-06 |
+| T-09 | FR-33 to FR-35 | UC-09 | SC-04 |
+| T-10 | FR-36 to FR-40 | UC-10 | SC-03 |
+| T-11 | FR-41, FR-42 | UC-11, UC-17 | SC-07 |
+| T-12 | FR-43 | UC-12 | SC-03, SC-05 |
+| T-13 | FR-44 to FR-47 | UC-13 | SC-01 |
+| T-14 | FR-48 to FR-51 | UC-14 | SC-05 |
+| T-15 | none (technical, see NFR-04, NFR-11) | none | SC-09 |
+| T-16 | FR-55 | UC-16 | SC-10 |
+
+All sixteen tasks are covered. In the use cases, A marks alternatives, E errors, and brackets the branching step.
+
+#### 3.4.2 UC-01 Connect to a database
+
+**Actors:** UT-01, UT-02, UT-06. **Task:** T-01. **Requirements:** FR-01 to FR-05  
+**Goal:** a working connection. **Pre:** the user knows server and credentials.  
+**Main flow:** 1. User enters server and credentials and tests. 2. System shows server details and databases. 3. User picks a database. 4. System saves the entry, protecting the password with DPAPI if asked.  
+**Alternatives:** A1 (1) a recent entry fills the fields and its password stays on the server. A2 (1) forgetting
+an entry deletes it.  
+**Errors:** E1 (2) the first error line is shown. E2 (4) without DPAPI no password is stored.  
+**Post:** no password exists in plain text.
+
+#### 3.4.3 UC-02 Extract a schema
+
+**Actors:** UT-01 to UT-03, UT-06. **Task:** T-02. **Requirements:** FR-06 to FR-10  
+**Goal:** read a complete schema fast and safely. **Pre:** a valid connection (UC-01).  
+**Main flow:** 1. User starts a comparison, export or probe. 2. System checks version and permissions. 3. System
+runs one read-only query per class in parallel. 4. System normalizes, hashes and builds the reference graph and
+the extraction report.  
+**Alternatives:** A1 (2) the probe lists readable classes. A2 (3) a failed optional query becomes a warning.  
+**Errors:** E1 (4) unreadable modules are indeterminate. E2 (3) a failed required query stops extraction.  
+**Post:** the report names everything that was not read.
+
+#### 3.4.4 UC-03 Configure comparison options
+
+**Actors:** UT-01. **Task:** T-03. **Requirements:** FR-11 to FR-13  
+**Goal:** decide which differences count. **Pre:** settings open or CLI options given.  
+**Main flow:** 1. User opens the settings. 2. System shows the defaults. 3. User changes options. 4. System saves
+them for the next comparisons.  
+**Alternatives:** A1 (1) CLI options apply to one run.  
+**Errors:** E1 (4) an untokenizable body is compared by whitespace only, never altered.  
+**Post:** ignored differences give equal hashes and literals stay unchanged.
+
+#### 3.4.5 UC-04 Compare two databases
+
+**Actors:** UT-01, UT-02, UT-06. **Task:** T-04. **Requirements:** FR-14 to FR-16  
+**Goal:** find every difference. **Pre:** source and target selected.  
+**Main flow:** 1. User starts the comparison. 2. System extracts both sides (UC-02). 3. System matches objects by
+schema, name and kind and compares hashes. 4. System shows the classified, grouped result with change trees.  
+**Alternatives:** A1 (3) casing-only name differences count only with case-sensitive names. A2 (4) identical
+databases offer no script.  
+**Errors:** E1 (2) a failed side stops the run with its reason. E2 (4) unscriptable kinds are marked report only.  
+**Post:** every difference and indeterminate object is listed.
+
+#### 3.4.6 UC-05 Review rename candidates
+
+**Actors:** UT-03. **Task:** T-05. **Requirements:** FR-17  
+**Goal:** avoid losing data on a rename. **Pre:** removed and added items exist.  
+**Main flow:** 1. System pairs removed and added items with equal structure hashes. 2. System lists them as
+candidates. 3. User checks both definitions and writes any sp_rename outside the tool.  
+**Alternatives:** A1 (3) a real drop and add stays two differences.  
+**Errors:** E1 (2) several matches are all listed, none is chosen.  
+**Post:** no sp_rename is generated.
+
+#### 3.4.7 UC-06 Generate a deployment script
+
+**Actors:** UT-01, UT-02. **Task:** T-06. **Requirements:** FR-18 to FR-24  
+**Goal:** a script for selected objects. **Pre:** differences exist.  
+**Main flow:** 1. User selects objects and requests the script. 2. System runs UC-07 and orders objects by
+dependency. 3. System writes the statements, leaving data loss out in safe mode. 4. System wraps them in one
+XACT_ABORT transaction and lists excluded steps.  
+**Alternatives:** A1 (1) safe mode off includes marked data loss steps. A2 (4) a rollback script is added. A3 (1)
+direction is set per object.  
+**Errors:** E1 (2) a cycle keeps input order with a warning. E2 (3) unscriptable objects are listed as skipped.  
+**Post:** only selected objects appear, in a safe order.

@@ -1,0 +1,21 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-02\nDBA" as DBA
+actor "UT-06\nSQL Server" as SQL
+rectangle "Deployment" {
+  usecase "UC-06 Generate a deployment script" as UC06
+  usecase "UC-07 Analyze deployment risk" as UC07
+  usecase "UC-09 Execute a deployment script" as UC09
+  usecase "Generate rollback script" as RB
+  usecase "Check trigger status" as TR
+}
+DEV --> UC06
+DBA --> UC07
+DBA --> UC09
+UC06 ..> UC07 : <<include>>
+RB ..> UC06 : <<extend>>
+TR ..> UC07 : <<extend>>
+UC09 --> SQL
+@enduml
