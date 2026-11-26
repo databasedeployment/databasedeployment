@@ -379,3 +379,66 @@ XACT_ABORT transaction and lists excluded steps.
 direction is set per object.  
 **Errors:** E1 (2) a cycle keeps input order with a warning. E2 (3) unscriptable objects are listed as skipped.  
 **Post:** only selected objects appear, in a safe order.
+
+#### 3.4.8 UC-07 Analyze deployment risk
+
+**Actors:** UT-02. **Task:** T-07. **Requirements:** FR-25 to FR-28  
+**Goal:** know whether a table change blocks or loses data. **Pre:** changed tables and row counts.  
+**Main flow:** 1. User opens the risk view. 2. System classifies each change as safe, in place, blocked if not
+empty or data loss. 3. System combines it with the row count and marks blocking and conditional changes.  
+**Alternatives:** A1 (1) the trigger report lists state differences.  
+**Errors:** E1 (3) an unknown row count is treated as filled.  
+**Post:** every risky change is shown with reason and row count.
+
+#### 3.4.9 UC-08 Create a migration
+
+**Actors:** UT-01. **Task:** T-08. **Requirements:** FR-29  
+**Goal:** a repeatable, versioned change. **Pre:** a reviewed comparison and a migrations folder.  
+**Main flow:** 1. User saves the comparison with a description. 2. System generates deployment and rollback
+scripts (UC-06). 3. System writes `V###__description.sql` and its rollback with the next version.  
+**Alternatives:** A1 (1) with nothing selected no file is written.  
+**Errors:** E1 (3) an existing version file is named, never overwritten.  
+**Post:** a new file pair exists.
+
+#### 3.4.10 UC-09 Execute a deployment script
+
+**Actors:** UT-02, UT-06. **Task:** T-09. **Requirements:** FR-33 to FR-35  
+**Goal:** run a script and see what happened. **Pre:** a script (UC-06) and DDL rights.  
+**Main flow:** 1. User confirms the run. 2. System splits at GO and runs the batches on one connection. 3. System
+streams messages and batch progress. 4. System reports completion and time.  
+**Alternatives:** A1 (3) result sets appear as a grid of up to 10,000 rows.  
+**Errors:** E1 (2) a failed batch shows number, level, state and line, then rolls back. E2 (3) cancel rolls back.
+E3 (2) a lost connection marks the run failed.  
+**Post:** all batches ran or the transaction was rolled back.
+
+#### 3.4.11 UC-10 Run comparison jobs from the CLI
+
+**Actors:** UT-03, UT-05. **Task:** T-10. **Requirements:** FR-36 to FR-40  
+**Goal:** compare many pairs in one command. **Pre:** a jobs.json with at least one job.  
+**Main flow:** 1. Actor runs compare with an expression such as 1,3-5,EDWDM. 2. System validates jobs.json and
+the selection. 3. System runs the jobs in parallel and prints each result. 4. System exits with 0, 1 or 2.  
+**Alternatives:** A1 (1) without an expression the jobs are listed for selection. A2 (1) script and probe commands
+work the same way.  
+**Errors:** E1 (2) invalid configuration or selection exits with 2 and names the problem. E2 (3) a failed job
+does not stop others.  
+**Post:** the exit code reflects the outcome.
+
+#### 3.4.12 UC-11 Export a snapshot
+
+**Actors:** UT-02, UT-06. **Task:** T-11. **Requirements:** FR-41  
+**Goal:** a schema file others can compare against. **Pre:** access to the reference database.  
+**Main flow:** 1. User starts the export. 2. System extracts the schema (UC-02). 3. System writes a compressed file
+with a version header and reports size and object count.  
+**Alternatives:** A1 (1) a scheduled CLI export writes a new file each time.  
+**Errors:** E1 (2) unreadable objects are stored as indeterminate.  
+**Post:** the file can be used without the reference database.
+
+#### 3.4.13 UC-12 Export a report
+
+**Actors:** UT-04, UT-05. **Task:** T-12. **Requirements:** FR-43  
+**Goal:** share results with people who do not run the tool. **Pre:** a comparison result.  
+**Main flow:** 1. Actor requests an HTML or JSON report. 2. System writes a standalone report with counts,
+differences and risks.  
+**Alternatives:** A1 (1) a CLI option writes one report per job.  
+**Errors:** E1 (2) a write failure names the path, the exit code is unchanged.  
+**Post:** the report opens offline and matches the counts.
