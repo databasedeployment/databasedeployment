@@ -442,3 +442,54 @@ differences and risks.
 **Alternatives:** A1 (1) a CLI option writes one report per job.  
 **Errors:** E1 (2) a write failure names the path, the exit code is unchanged.  
 **Post:** the report opens offline and matches the counts.
+
+#### 3.4.14 UC-13 Review differences in the web interface
+
+**Actors:** UT-01, UT-02. **Task:** T-13. **Requirements:** FR-44 to FR-47  
+**Goal:** review a comparison as in SSDT. **Pre:** the backend runs on 127.0.0.1.  
+**Main flow:** 1. User selects source and target and starts. 2. System streams progress over SSE. 3. System shows
+the grouped tree with checkboxes. 4. User selects an object and the system shows both definitions side by side.  
+**Alternatives:** A1 (1) a second tab runs its own session.  
+**Errors:** E1 (2) closing the tab disposes the session. E2 (1) an unreachable backend is explained.  
+**Post:** the objects for the next step are selected.
+
+#### 3.4.15 UC-14 Get AI explanations
+
+**Actors:** UT-04, UT-02, UT-07. **Task:** T-14. **Requirements:** FR-48 to FR-51  
+**Goal:** plain language explanations. **Pre:** the assistant is enabled.  
+**Main flow:** 1. User asks for release notes, risk explanations or a script review. 2. System builds a prompt from
+metadata only. 3. System sends it to the provider, local by default. 4. System shows the parsed answer.  
+**Alternatives:** A1 (3) a configured OpenAI-compatible provider is used instead.  
+**Errors:** E1 (3) an unavailable provider is reported and all else works. E2 (4) unparsable text is shown as
+unstructured.  
+**Post:** no row data left the machine.
+
+#### 3.4.16 UC-15 Apply pending migrations
+
+**Actors:** UT-04, UT-05, UT-06. **Task:** T-08. **Requirements:** FR-30 to FR-32  
+**Goal:** bring an environment to the latest version. **Pre:** migration files (UC-08) and target access.  
+**Main flow:** 1. Actor lists pending migrations. 2. System reads `__SchemaDiffMigrations` and shows missing
+versions. 3. Actor applies them. 4. System executes them in order (UC-09) and records version and checksum.  
+**Alternatives:** A1 (1) the drift check lists live changes since the last migration.  
+**Errors:** E1 (2) a checksum mismatch stops the run. E2 (4) a failed migration rolls back and stops the rest.  
+**Post:** history matches the files.
+
+#### 3.4.17 UC-16 Get started with the documentation
+
+**Actors:** UT-04 or any new user. **Task:** T-16. **Requirements:** FR-55  
+**Goal:** a first comparison without help. **Pre:** access to two databases.  
+**Main flow:** 1. User installs the release from the README. 2. User fills the sample jobs.json. 3. User runs
+compare as the CLI reference describes.  
+**Alternatives:** A1 (1) the web guide walks through connect, compare and review.  
+**Errors:** E1 (1) a missing prerequisite points to the prerequisites section.  
+**Post:** the user ran a comparison from the documentation alone.
+
+#### 3.4.18 UC-17 Compare against a snapshot
+
+**Actors:** UT-01, UT-06. **Task:** T-11. **Requirements:** FR-42  
+**Goal:** compare with an unreachable environment. **Pre:** a snapshot file (UC-11).  
+**Main flow:** 1. User selects the file as target and a live source. 2. System checks the version header.
+3. System extracts the source (UC-02) and compares (UC-04).  
+**Alternatives:** A1 (1) the snapshot can also be the source.  
+**Errors:** E1 (2) an unsupported version is refused.  
+**Post:** the result equals a live comparison at export time.
