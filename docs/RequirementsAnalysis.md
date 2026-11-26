@@ -141,3 +141,85 @@ without production access.
 | P-02 | Murat, 41 | UT-02 | Senior DBA, signs off every production deployment. | Knows before running whether a script blocks or loses data. |
 | P-03 | Deniz, 34 | UT-03 | Data warehouse engineer with seven layered databases. | Nightly compare of all layers, alerts only on differences. |
 | P-04 | Selin, 38 | UT-04 | Release manager coordinating three teams. | Readable release notes and a report for the change request. |
+
+#### Scenario Narratives
+
+**SC-01 Comparing development with test** (P-01, FR-01 to FR-15, FR-44 to FR-46). Elif picks two recent
+connections and compares. The tree shows four changed procedures and a new column, but not a reformatted one.
+
+**SC-02 Checking risk before production** (P-02, FR-21, FR-25 to FR-27). A change narrows a column on a table with
+42 million rows. The risk view marks it as blocking data loss and safe mode left it out.
+
+**SC-03 Nightly warehouse comparison** (P-03, FR-36 to FR-40, FR-43). A nightly pipeline runs one jobs.json job per
+layer. Exit code 1 attaches the HTML report and names the layer.
+
+**SC-04 Deploying selected changes** (P-02, FR-18 to FR-22, FR-33 to FR-35). Murat runs the script for approved
+objects. A batch fails at line 214, the transaction rolls back and he fixes the grant.
+
+**SC-05 Preparing release notes** (P-04, FR-43, FR-48, FR-49). Selin attaches the assistant's summary and the HTML
+report to the change request.
+
+**SC-06 Saving and applying a migration** (P-01, FR-29 to FR-32). Elif saves V014 with its rollback and applies it
+on test. Later the drift check reports a manual change.
+
+**SC-07 Comparing through a snapshot** (P-02, FR-41, FR-42). Murat exports a production snapshot weekly, and
+developers compare against the file.
+
+**SC-08 Finding a renamed column** (P-03, FR-14, FR-15, FR-17). A rename candidate lets Deniz write sp_rename
+herself and keep the data.
+
+**SC-09 Verifying a change to SchemaDiff** (P-01 as contributor, NFR-04, NFR-11). CI runs all tests and blocks the
+merge until they pass and a teammate approves.
+
+**SC-10 Getting started** (P-04, FR-55). Selin follows the README and runs her first compare.
+
+#### User Stories Linked to the Project Plan
+
+Technical activities have a short note instead of a story.
+
+| User story ID | Scenario ID | Project Plan WBS activity ID | User story | Related requirement ID(s) |
+|-----|-----|------|------------------------|---------|
+| US-01 | SC-01 | WBS-1.1 | As a developer, I want to test a connection before comparing. | FR-01 to FR-03 |
+| US-02 | SC-01 | WBS-1.2 | As a developer, I want recent connections and passwords remembered securely. | FR-04, FR-05 |
+| US-03 | SC-01 | WBS-1.3 | As a developer, I want an SSDT-like connect dialog with a database list. | FR-01, FR-03 |
+| US-04 | SC-01 | WBS-2.1 | Technical: domain model and contracts used by T-02 to T-14. | FR-06, FR-14 |
+| US-05 | SC-01 | WBS-2.2 | As a developer, I want a large schema read in seconds. | FR-06 |
+| US-06 | SC-03 | WBS-2.3 | As a BI developer, I want parallel extraction that does not overload the server. | FR-06, FR-09 |
+| US-07 | SC-02 | WBS-2.4 | As a DBA, I want unreadable objects reported as uncertain. | FR-07, FR-08, FR-10 |
+| US-08 | SC-01 | WBS-3.1 | As a developer, I want formatting and comment changes ignored. | FR-11 |
+| US-09 | SC-01 | WBS-3.2 | Technical: object and part hashing behind FR-14 and FR-15. | FR-12 |
+| US-10 | SC-01 | WBS-4.1 | As a developer, I want every object classified. | FR-13, FR-14 |
+| US-11 | SC-01 | WBS-4.2 | As a developer, I want to drill down to changed columns and indexes. | FR-15 |
+| US-12 | SC-02 | WBS-4.3 | As a DBA, I want every object kind compared. | FR-16 |
+| US-13 | SC-08 | WBS-5.1 | As a BI developer, I want rename candidates to avoid dropping data. | FR-17 |
+| US-14 | SC-04 | WBS-6.1 | As a DBA, I want scripts in dependency order. | FR-18 |
+| US-15 | SC-04 | WBS-6.2 | As a DBA, I want table, index, constraint and type changes scripted. | FR-18, FR-22 |
+| US-16 | SC-04 | WBS-6.3 | As a developer, I want modules and security scripted with ALTER. | FR-19 |
+| US-17 | SC-04 | WBS-6.4 | As a DBA, I want one transaction, safe mode and only selected objects. | FR-20 to FR-22 |
+| US-18 | SC-04 | WBS-6.5 | As a DBA, I want rollback and per object direction. | FR-23, FR-24 |
+| US-19 | SC-02 | WBS-7.1 | As a DBA, I want risk per table change with row counts. | FR-25 to FR-27 |
+| US-20 | SC-02 | WBS-7.2 | As a DBA, I want to see disabled triggers per environment. | FR-28 |
+| US-21 | SC-06 | WBS-8.1 | As a developer, I want versioned migrations with rollback files. | FR-29 |
+| US-22 | SC-06 | WBS-8.2 | As a release manager, I want history, pending list and drift check. | FR-30 to FR-32 |
+| US-23 | SC-04 | WBS-9.1 | As a DBA, I want to run scripts with SSMS style messages. | FR-33, FR-34 |
+| US-24 | SC-04 | WBS-9.2 | As a DBA, I want to follow and stop execution in the browser. | FR-34, FR-35 |
+| US-25 | SC-03 | WBS-10.1 | As a BI developer, I want jobs in jobs.json picked by short expressions. | FR-36, FR-37, FR-40 |
+| US-26 | SC-03 | WBS-10.2 | As a BI developer, I want parallel jobs and meaningful exit codes. | FR-38, FR-39 |
+| US-27 | SC-07 | WBS-11.1 | As a developer without production access, I want snapshot comparison. | FR-41, FR-42 |
+| US-28 | SC-05 | WBS-12.1 | As a release manager, I want HTML and JSON reports. | FR-43 |
+| US-29 | SC-01 | WBS-13.1 | As a developer, I want live progress in the browser. | FR-44, FR-47 |
+| US-30 | SC-01 | WBS-13.2 | As a developer, I want a grouped tree and side-by-side view as in SSDT. | FR-45 |
+| US-31 | SC-02 | WBS-13.3 | As a DBA, I want a risk view, settings and my language. | FR-13, FR-46 |
+| US-32 | SC-05 | WBS-14.1 | As a release manager, I want a local model and a tool usable without AI. | FR-51 |
+| US-33 | SC-05 | WBS-14.2 | As a release manager, I want release notes, risk explanations and review comments. | FR-48 to FR-50 |
+| US-34 | SC-09 | WBS-15.1 | Technical: repository, solution and CI. | NFR-11 |
+| US-35 | SC-09 | WBS-15.2 | Technical: fixture databases with documented differences. | FR-14 |
+| US-36 | SC-09 | WBS-15.3 | Technical: coverage matrix and cross-module tests. | FR-14, FR-16 |
+| US-37 | SC-09 | WBS-15.4 | Technical: end-to-end tests and stabilization. | FR-14, NFR-11 |
+| US-38 | SC-03 | WBS-15.5 | As a BI developer, I want proof that SchemaDiff beats DacFx. | NFR-04 |
+| US-39 | SC-03 | WBS-15.6 | Technical: 10,000 object database and early timing. | NFR-04 |
+| US-40 | SC-09 | WBS-15.7 | Technical: fixtures for the WBS-4.3 object kinds. | FR-14, FR-16 |
+| US-41 | SC-09 | WBS-15.8 | Technical: compatibility, permission and usability assessment. | NFR-06, NFR-12 |
+| US-42 | SC-09 | WBS-15.9 | Technical: first CLI compare, script and apply pass. | FR-14, NFR-11 |
+| US-43 | SC-10 | WBS-16.1 | As a new user, I want a README, CLI reference and web guide. | FR-55 |
+| US-44 | SC-10 | WBS-16.2 | Technical: demo scenario and presentation material. | FR-55 |
