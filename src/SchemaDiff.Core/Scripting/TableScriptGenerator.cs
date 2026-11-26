@@ -45,7 +45,7 @@ public sealed record TableScriptResult(
 /// <see cref="TableScriptResult.DataLossActions"/>, so nothing risky goes through unnoticed.
 ///
 /// Out of scope, reported as skipped: a change of column order (it needs a table rebuild with a
-/// data copy) and IDENTITY or computed column changes.
+/// data copy), IDENTITY or computed column changes, and switching a table to system versioning.
 /// </summary>
 public static class TableScriptGenerator
 {
@@ -156,6 +156,8 @@ public static class TableScriptGenerator
         var dropColumns = new List<string>();
         var localSkips = new List<string>();
 
+        AppendRenames(key, result.Source.CaseSensitiveColumnNames, source.Columns, targetByName, out var renames);
+
         // ADD: in the source, not on the target.
         foreach (var column in source.Columns)
         {
@@ -170,7 +172,7 @@ public static class TableScriptGenerator
 
             var defaultClause = column.DefaultDefinition is not null ? $" DEFAULT {column.DefaultDefinition}" : string.Empty;
             var sql = $"ALTER TABLE {qualified} ADD {Id(column.Name)} {RenderType(column)}" +
-                      $" {Nullability(column)}{defaultClause};";
+                      $"{AddColumnAttributes(column)} {Nullability(column)}{defaultClause};";
             adds.Add(sql);
 
             // A NOT NULL column without a default cannot be added to a table that has rows.
@@ -190,6 +192,7 @@ public static class TableScriptGenerator
         }
 
         // ALTER: on both sides but different.
+        var retyped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var column in source.Columns)
         {
             if (!targetByName.TryGetValue(column.Name, out var current)) continue;
@@ -202,8 +205,12 @@ public static class TableScriptGenerator
                 continue;
             }
 
-            var sql = $"ALTER TABLE {qualified} ALTER COLUMN {Id(column.Name)} {RenderType(column)} {Nullability(column)};";
+            // The ALTER COLUMN grammar puts SPARSE after NULL or NOT NULL. It is written explicitly
+            // because leaving it out does not guarantee the column stays sparse.
+            var sparse = column.IsSparse ? " SPARSE" : string.Empty;
+            var sql = $"ALTER TABLE {qualified} ALTER COLUMN {Id(column.Name)} {RenderType(column)} {Nullability(column)}{sparse};";
             alters.Add(sql);
+            retyped.Add(column.Name);
 
             switch (ClassifyAlter(column, current, rows))
             {
@@ -219,10 +226,17 @@ public static class TableScriptGenerator
             }
         }
 
+        AppendColumnAttributeDiff(qualified, source.Columns, targetByName, retyped, alters, localSkips);
+
+        // System versioning is turned off first, because a versioned table limits other schema changes.
+        var versioning = new List<string>();
+        AppendTemporalDiff(key, qualified, source, target, versioning, skipped);
+
         foreach (var reason in localSkips)
             skipped.Add(new SkippedObject(key, reason));
 
-        var ordered = dropColumns.Concat(alters).Concat(adds).ToList();
+        // Order: rename, versioning off, DROP COLUMN, ALTER COLUMN and attributes, ADD COLUMN.
+        var ordered = renames.Concat(versioning).Concat(dropColumns).Concat(alters).Concat(adds).ToList();
 
         if (ordered.Count == 0)
         {
@@ -242,6 +256,125 @@ public static class TableScriptGenerator
         sb.AppendLine("GO");
         sb.AppendLine();
         included.Add(key);
+    }
+
+    /// <summary>
+    /// Columns that only differ in casing. Columns are matched case-insensitively, so such a column
+    /// is neither added nor dropped and its type is the same. SQL Server keeps the name as written,
+    /// and sp_rename is the only way to fix the casing. Renames run first so later statements see
+    /// the new name. When column names are case-insensitive a casing difference is not a change.
+    /// </summary>
+    private static void AppendRenames(
+        ObjectKey key, bool caseSensitiveColumns, IReadOnlyList<ColumnInfo> sourceColumns,
+        Dictionary<string, ColumnInfo> targetByName, out List<string> renames)
+    {
+        renames = [];
+        if (!caseSensitiveColumns) return;
+
+        foreach (var column in sourceColumns)
+        {
+            if (!targetByName.TryGetValue(column.Name, out var current)) continue;
+            if (string.Equals(column.Name, current.Name, StringComparison.Ordinal)) continue;
+
+            renames.Add(
+                $"EXEC sp_rename N'{RenameTarget(key.Schema)}.{RenameTarget(key.Name)}.{RenameTarget(current.Name)}', " +
+                $"N'{Literal(column.Name)}', N'COLUMN';");
+        }
+    }
+
+    /// <summary>
+    /// System versioning. Turning it off is safe and scripted in full. Turning it on, or changing
+    /// the history table or PERIOD, needs PERIOD columns with defaults and a history table, so it is
+    /// reported for a manual step instead of writing a half working script.
+    /// </summary>
+    private static void AppendTemporalDiff(
+        ObjectKey key, string qualified, ObjectSnapshot source, ObjectSnapshot target,
+        List<string> versioning, List<SkippedObject> skipped)
+    {
+        var sourceTemporal = source.PartCanonical.GetValueOrDefault("temporal");
+        var targetTemporal = target.PartCanonical.GetValueOrDefault("temporal");
+        if (sourceTemporal == targetTemporal) return;
+
+        if (sourceTemporal is null)
+        {
+            versioning.Add($"ALTER TABLE {qualified} SET (SYSTEM_VERSIONING = OFF);");
+            versioning.Add($"ALTER TABLE {qualified} DROP PERIOD FOR SYSTEM_TIME;");
+        }
+        else if (targetTemporal is null)
+        {
+            skipped.Add(new SkippedObject(key,
+                "the table becomes temporal. It needs GENERATED ALWAYS period columns and a history table, apply " +
+                "ADD PERIOD FOR SYSTEM_TIME and SET SYSTEM_VERSIONING = ON by hand"));
+        }
+        else
+        {
+            skipped.Add(new SkippedObject(key,
+                "the temporal history or PERIOD setup changes. Rebuilding it is risky, review it by hand"));
+        }
+    }
+
+    /// <summary>
+    /// Storage attributes of a new column, in the order of the T-SQL grammar. COLLATE is already
+    /// part of <see cref="RenderType"/>, and FILESTREAM columns (varbinary(max)) take no collation.
+    /// </summary>
+    private static string AddColumnAttributes(ColumnInfo column)
+    {
+        var sb = new StringBuilder();
+        if (column.IsFileStream) sb.Append(" FILESTREAM");
+        if (column.IsSparse) sb.Append(" SPARSE");
+        if (column.IsColumnSet) sb.Append(" COLUMN_SET FOR ALL_SPARSE_COLUMNS");
+        if (column.IsRowGuidCol) sb.Append(" ROWGUIDCOL");
+
+        // Without IDENTITY the column would be added as a plain column, which is silently wrong.
+        if (column.IsIdentity)
+        {
+            sb.Append(" IDENTITY");
+            if (column.IdentitySeed is not null && column.IdentityIncrement is not null)
+                sb.Append('(').Append(column.IdentitySeed).Append(", ").Append(column.IdentityIncrement).Append(')');
+            if (column.IdentityNotForReplication) sb.Append(" NOT FOR REPLICATION");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Storage attribute differences of columns that exist on both sides. SPARSE and ROWGUIDCOL can
+    /// be switched with <c>ALTER COLUMN ... ADD|DROP</c>. FILESTREAM, COLUMN_SET and the NOT FOR
+    /// REPLICATION flag of an IDENTITY cannot, so they are reported instead of scripted.
+    /// </summary>
+    /// <param name="retyped">Columns that already get a type level ALTER COLUMN, which carries SPARSE.</param>
+    private static void AppendColumnAttributeDiff(
+        string qualified,
+        IReadOnlyList<ColumnInfo> sourceColumns,
+        Dictionary<string, ColumnInfo> targetByName,
+        HashSet<string> retyped,
+        List<string> statements,
+        List<string> localSkips)
+    {
+        foreach (var column in sourceColumns)
+        {
+            if (!targetByName.TryGetValue(column.Name, out var current)) continue;
+            var name = Id(column.Name);
+
+            if (column.IsRowGuidCol != current.IsRowGuidCol)
+                statements.Add($"ALTER TABLE {qualified} ALTER COLUMN {name} {(column.IsRowGuidCol ? "ADD" : "DROP")} ROWGUIDCOL;");
+
+            // A retyped column already carries SPARSE in its ALTER. Removing SPARSE cannot be said
+            // there, because leaving it out does not mean "remove", so DROP SPARSE is written.
+            if (column.IsSparse != current.IsSparse && !(retyped.Contains(column.Name) && column.IsSparse))
+                statements.Add($"ALTER TABLE {qualified} ALTER COLUMN {name} {(column.IsSparse ? "ADD" : "DROP")} SPARSE;");
+
+            if (column.IdentityNotForReplication != current.IdentityNotForReplication)
+                localSkips.Add($"{name} IDENTITY NOT FOR REPLICATION is {(column.IdentityNotForReplication ? "added" : "removed")}, " +
+                               "which ALTER cannot do. The table has to be recreated");
+
+            if (column.IsFileStream != current.IsFileStream)
+                localSkips.Add($"{name} FILESTREAM is {(column.IsFileStream ? "added" : "removed")}, " +
+                               "which ALTER cannot do. The table has to be recreated");
+
+            if (column.IsColumnSet != current.IsColumnSet)
+                localSkips.Add($"{name} COLUMN_SET changes, which ALTER cannot do. The table has to be recreated");
+        }
     }
 
     // Risk classification
@@ -374,4 +507,7 @@ public static class TableScriptGenerator
     /// <summary>Text for an N'...' literal, with single quotes doubled.</summary>
     private static string Literal(string value) => value.Replace("'", "''");
 
+    /// <summary>Name part for the first argument of sp_rename. It sits inside brackets and inside
+    /// an N'...' literal, so both closing brackets and quotes are escaped.</summary>
+    private static string RenameTarget(string name) => Literal(Id(name));
 }
