@@ -13,7 +13,14 @@
 | **Submission date** | 2026-11-28 |
 | **Document version** | 1.0 |
 
-<!-- changelog -->
+## Change Log
+
+| Version | Date | Author(s) | Section(s) affected | Change type | Description of change |
+|----|------|-------|-----|-----|--------------------|
+| 1.0 | 2026-11-28 | Team SegFault | 1, 2, 3 | Updated | From Requirements Specification v1.1, shortened for the word limit, IDs unchanged. |
+| 1.0 | 2026-11-28 | Team SegFault | 3.2 | Updated | Stories numbered US-01 to US-44. Removed FR-53 dropped from UT-05. |
+| 1.0 | 2026-11-28 | Team SegFault | 4 | Added | User interface model, eight screens. |
+| 1.0 | 2026-11-28 | Team SegFault | 5 | Added | ER data model, data considerations and DFD Levels 0, 1 and 2. |
 
 ## 1. Introduction
 
