@@ -493,3 +493,52 @@ compare as the CLI reference describes.
 **Alternatives:** A1 (1) the snapshot can also be the source.  
 **Errors:** E1 (2) an unsupported version is refused.  
 **Post:** the result equals a live comparison at export time.
+
+<!-- pagebreak -->
+
+## 4. User Interface Model
+
+Eight screens cover the web workflow from connect to execution. The PlantUML Salt mock-ups follow the planned
+web interface, which mirrors SSDT Schema Compare (NFR-06). Names are fixture examples. The CLI (UC-10) has no screens.
+
+| Screen ID | Screen name | User story ID(s) | Project Plan component(s) | Related requirement or use case ID(s) |
+|-----|--------|--------|--------------|--------------|
+| UI-01 | Connect dialog | US-01, US-02, US-03 | Connect dialog WBS-1.3, credential store WBS-1.2 | FR-01 to FR-05, UC-01 |
+| UI-02 | Compare start | US-27, US-29, US-30 | Compare view WBS-13.2, snapshots WBS-11.1 | FR-42, FR-44, UC-04, UC-17 |
+| UI-03 | Comparison progress | US-05, US-06, US-29 | SSE backend WBS-13.1, extraction runner WBS-2.3 | FR-09, FR-44, NFR-05, UC-02 |
+| UI-04 | Result tree and definitions | US-10, US-11, US-13, US-30 | Compare view WBS-13.2, diff engine WBS-4.1, WBS-4.2, renames WBS-5.1 | FR-14, FR-15, FR-17, FR-45, UC-04, UC-05, UC-13 |
+| UI-05 | Deployment risk view | US-19, US-20, US-31 | Risk view WBS-13.3, analyzer WBS-7.1, triggers WBS-7.2 | FR-25 to FR-28, UC-07 |
+| UI-06 | Generated script | US-14, US-17, US-18, US-21 | Safe mode WBS-6.4, rollback WBS-6.5, migrations WBS-8.1 | FR-18 to FR-24, FR-29, UC-06, UC-08 |
+| UI-07 | Execution messages | US-23, US-24 | Execution UI WBS-9.2, engine WBS-9.1 | FR-33 to FR-35, UC-09 |
+| UI-08 | Comparison options and language | US-08, US-31 | Settings WBS-13.3, normalizer WBS-3.1 | FR-11, FR-13, FR-46, UC-03 |
+
+### 4.1 UI-01 Connect dialog
+
+![UI-01 Connect dialog](images/requirements-analysis/ui-01-connect.png)
+
+Opened from Source or Target. Recent connections are on the left, a saved password is only flagged, never sent
+back. The right side holds the SSDT connection properties. Test connection shows server, version and login or the
+first error line. Connect returns to UI-02.
+
+### 4.2 UI-02 Compare start
+
+![UI-02 Compare start](images/requirements-analysis/ui-02-compare-start.png)
+
+The main window before a comparison. The top bar holds the source and target selectors with a swap button. The
+target menu offers a live connection or a snapshot file (UC-17). Compare is enabled once both sides are set, and
+New comparison opens a separate tab with its own session (FR-47). Options and the TR language switch open UI-08.
+
+### 4.3 UI-03 Comparison progress
+
+![UI-03 Comparison progress](images/requirements-analysis/ui-03-progress.png)
+
+While a comparison runs, a card shows the phase, query and module counters, percentage and elapsed time over SSE
+(NFR-05). Cancel returns to UI-02. On success UI-04 appears.
+
+### 4.4 UI-04 Result tree and definitions
+
+![UI-04 Result tree and definitions](images/requirements-analysis/ui-04-results.png)
+
+The upper pane groups differences by Change, Add, Delete and Indeterminate. Checkboxes choose what Generate Script
+includes, sub-change rows such as Alter Column come from the change tree, a warning sign links to UI-05 and the
+status line reports rename candidates. The lower pane shows both definitions side by side with difference arrows.

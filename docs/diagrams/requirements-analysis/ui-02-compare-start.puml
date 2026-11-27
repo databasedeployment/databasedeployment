@@ -1,0 +1,23 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  {
+    [<b>Source: DEVSQL01.Payments] | [ ⇄ ] | [<b>Target: TESTSQL01.Payments ▾] | <color:white>xxx | [New comparison] | [<b>Compare] | [Generate Script] | [Options] | [TR]
+    . | . | {+ Select connection…
+              Open snapshot file… } | . | . | . | . | . | .
+  }
+  ==
+  Ready: DEVSQL01.Payments → TESTSQL01.Payments. Press Compare.
+  ==
+  { ^All types ^ | "search schema or object…   " | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | {/ <b>Differences | Deployment risk (0) } }
+  { <b>Type | <color:white>xxxx | <b>Source | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | <b>Target }
+  ..
+  <i>No comparison yet.
+  .
+  ==
+  { <b>Object Definitions | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [ ▲ ] | — | [ ▼ ] | [ ] canonical text }
+  <i>Select a row above.
+  .
+}
+@endsalt

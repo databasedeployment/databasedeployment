@@ -1,0 +1,41 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { [<b>Source: DEVSQL01.Payments] | [ ⇄ ] | [<b>Target: TESTSQL01.Payments] | <color:white>xx | [New comparison] | [Compare] | [<b>Generate Script] | [Options] | [TR] }
+  ==
+  1,842 objects · 5 changed · 2 added · 1 removed · 1,834 identical · ⚠ 1 possible RENAME
+  ==
+  { ^All types ^ | "search…        " | 7 objects selected | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxx | {/ <b>Differences | Deployment risk (1) } }
+  {
+    . | <b>Type | <b>Source | . | <b>Target
+    [X] | <b>▾ Change (5) | . | . | .
+    [X] | <color:white>xx</color>Procedure | dbo.usp_PostPayment | ≠ | dbo.usp_PostPayment
+    [X] | <color:white>xx</color>Table | dbo.Transactions | ≠ | dbo.Transactions ⚠
+    . | <color:white>xxxx</color><i>Alter Column | <i>Amount decimal(12,2) | ≠ | <i>Amount decimal(18,2)
+    [X] | <color:white>xx</color>View | dbo.vw_DailyTotals | ≠ | dbo.vw_DailyTotals
+    [X] | <b>▾ Add (2) | . | . | .
+    [X] | <color:white>xx</color>Table | dbo.PaymentAudit | + | <i>not present
+    [ ] | <b>▾ Delete (1) | . | . | .
+    [ ] | <color:white>xx</color>Procedure | <i>not present | − | dbo.usp_OldExport
+    . | <b>▸ Indeterminate (0) | . | . | .
+  }
+  ==
+  { <b>Object Definitions: dbo.usp_PostPayment | <color:white>xxxxxxxxxxxxxxxxxxxxxx | [ ▲ ] | 1 / 3 differences | [ ▼ ] | [ ] canonical text }
+  {
+    {^"Source"
+      12  SELECT @Total = SUM(Amount)
+      13    FROM dbo.Transactions
+      <back:#FFE3E3>14   WHERE Status = 'POSTED'</back>
+      <back:#FFE3E3>15     AND ValueDate >= @From;</back>
+      16  RETURN @Total;
+    } | {^"Target"
+      12  SELECT @Total = SUM(Amount)
+      13    FROM dbo.Transactions
+      <back:#E3F3E3>14   WHERE Status = 'POSTED';</back>
+      .
+      15  RETURN @Total;
+    }
+  }
+}
+@endsalt

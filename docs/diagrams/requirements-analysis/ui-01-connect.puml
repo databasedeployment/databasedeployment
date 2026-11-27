@@ -1,0 +1,33 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { <b>Connect: Source connection | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [ ✕ ] }
+  ==
+  {
+    {^"Recent connections"
+      <b>DEVSQL01 · Payments            | [ ✕ ]
+      SQL login app_reader · password saved
+      ..
+      <b>TESTSQL01 · Payments           | [ ✕ ]
+      Windows Authentication
+      ..
+      <b>(localdb)\MSSQLLocalDB · Fixture_Dev | [ ✕ ]
+      Windows Authentication
+    } | . |
+    {^"Connection properties"
+      Server name     | "DEVSQL01            "
+      Authentication  | ^SQL Server Authentication^
+      Username        | "app_reader          "
+      Password        | "****                "
+      .               | [X] Remember password
+      Database        | ^Payments            ^
+      Encrypt         | ^Optional (False)    ^
+      Trust server certificate | ^True       ^
+      .               | <color:green>Connected: DEVSQL01 (16.0), user app_reader
+    }
+  }
+  ==
+  { [Test connection] | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [Cancel] | [<b>Connect] }
+}
+@endsalt
