@@ -8,7 +8,8 @@ namespace SchemaDiff.Web.Tests;
 
 /// <summary>
 /// Hosts the web backend in memory. The recent connections store points to a temporary file and
-/// uses a fake protector, so tests never touch the real profile of the user.
+/// uses a fake protector, so tests never touch the real profile of the user. Comparisons run
+/// against <see cref="FakeCompare"/> instead of a SQL Server.
 /// </summary>
 public sealed class WebAppFactory : WebApplicationFactory<Program>
 {
@@ -16,11 +17,16 @@ public sealed class WebAppFactory : WebApplicationFactory<Program>
 
     public RecentConnections Recent => Services.GetRequiredService<RecentConnections>();
 
+    public FakeCompare Compare { get; } = new();
+
+    public CompareService Sessions => Services.GetRequiredService<CompareService>();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
         {
             services.AddSingleton(new RecentConnections(StorePath, new FakeProtector()));
+            services.AddSingleton(new CompareService(Compare.RunAsync, Compare.Clock));
         });
     }
 
