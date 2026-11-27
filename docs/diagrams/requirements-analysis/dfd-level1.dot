@@ -1,0 +1,88 @@
+digraph L1 {
+  graph [rankdir=TB, fontname="DejaVu Sans", nodesep=0.35, ranksep=0.55, pad=0.15, newrank=true];
+  node  [fontname="DejaVu Sans", fontsize=11, color="#1F3A5F"];
+  edge  [fontname="DejaVu Sans", fontsize=8.5, color="#3A4F6B", fontcolor="#222222"];
+
+  node [shape=box, style="", width=1.3, height=0.5];
+  E1a [label="E1 User"];
+  E1b [label="E1 User *"];
+  E1c [label="E1 User *"];
+  E1d [label="E1 User *"];
+  E2  [label="E2 CLI user /\nCI/CD pipeline"];
+  E3a [label="E3 SQL Server"];
+  E3b [label="E3 SQL Server *"];
+  E3c [label="E3 SQL Server *"];
+  E4  [label="E4 AI provider"];
+
+  node [shape=box, style="rounded,filled", fillcolor="#EEF3F9", width=1.5, height=0.7];
+  P1 [label="1.0\nManage connections"];
+  P2 [label="2.0\nExtract schema"];
+  P3 [label="3.0\nCompare snapshots"];
+  P4 [label="4.0\nAnalyze\ndeployment risk"];
+  P5 [label="5.0\nGenerate\ndeployment script"];
+  P6 [label="6.0\nExecute scripts\nand migrations"];
+  P7 [label="7.0\nOrchestrate\nCLI jobs"];
+  P8 [label="8.0\nReport and explain"];
+
+  node [shape=plaintext, style="", width=0, height=0];
+  D1 [label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="4"><TR><TD SIDES="TBL" BORDER="1" COLOR="#1F3A5F">D1</TD><TD SIDES="TB" BORDER="1" COLOR="#1F3A5F">Recent connections</TD></TR></TABLE>>];
+  D2 [label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="4"><TR><TD SIDES="TBL" BORDER="1" COLOR="#1F3A5F">D2</TD><TD SIDES="TB" BORDER="1" COLOR="#1F3A5F">Job configuration</TD></TR></TABLE>>];
+  D3 [label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="4"><TR><TD SIDES="TBL" BORDER="1" COLOR="#1F3A5F">D3</TD><TD SIDES="TB" BORDER="1" COLOR="#1F3A5F">Snapshot files</TD></TR></TABLE>>];
+  D4 [label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="4"><TR><TD SIDES="TBL" BORDER="1" COLOR="#1F3A5F">D4</TD><TD SIDES="TB" BORDER="1" COLOR="#1F3A5F">Comparison sessions</TD></TR></TABLE>>];
+  D5 [label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="4"><TR><TD SIDES="TBL" BORDER="1" COLOR="#1F3A5F">D5</TD><TD SIDES="TB" BORDER="1" COLOR="#1F3A5F">Migration files</TD></TR></TABLE>>];
+  {rank=same; E3c; E1a; P1; D1;}
+  E3c -> E1a [style=invis];
+  {rank=same; P2; D3; E3a;}
+  {rank=same; E2; P7; P3; D2;}
+  {rank=same; D4; E1b;}
+  {rank=same; P4; P8; E4;}
+  {rank=same; D5; P5; E1c;}
+  {rank=same; E1d; P6;}
+
+  E1a -> P1 [label="connection details"];
+  P1 -> E1a [label="server info,\ndatabase list"];
+  P1 -> D1 [label="saved connection"];
+  D1 -> P1 [label="recent entry,\nprotected password"];
+  P1 -> E3a [label="connection test"];
+  E3a -> P1 [label="server info"];
+  P1 -> P2 [label="validated\nconnection"];
+
+  E1a -> P2 [label="comparison\noptions"];
+  P2 -> E1a [label="progress"];
+  P2 -> E3c [label="read-only\ncatalog queries"];
+  E3c -> P2 [label="catalog rows,\nrow counts"];
+  P2 -> D3 [label="exported\nsnapshot"];
+  D3 -> P2 [label="imported\nsnapshot"];
+  P2 -> P3 [label="source and target\nsnapshots"];
+
+  E2 -> P7 [label="job selection,\nreport option"];
+  P7 -> E2 [label="job results,\nexit code"];
+  D2 -> P7 [label="job definitions"];
+  P7 -> P2 [label="job connection\npairs"];
+  P3 -> P7 [label="job comparison\nresults"];
+  P7 -> P8 [label="report request"];
+
+  P3 -> D4 [label="comparison result"];
+  P3 -> E1b [label="comparison result"];
+  D4 -> P4 [label="changed tables,\nrow counts"];
+  P4 -> E1b [label="risk findings"];
+  D4 -> P8 [label="comparison and\nrisk results"];
+  E1b -> P8 [label="report and\nAI requests"];
+  P8 -> E1b [label="reports,\nAI explanations"];
+  P8 -> E2 [label="HTML and\nJSON reports"];
+  P8 -> E4 [label="schema metadata\nprompt"];
+  E4 -> P8 [label="structured\nanswer"];
+
+  P4 -> P5 [label="risk findings"];
+  D4 -> P5 [label="comparison result\nand snapshots"];
+  E1c -> P5 [label="object selection,\nsafe mode, direction"];
+  P5 -> E1c [label="deployment and\nrollback scripts"];
+  P5 -> D5 [label="migration pair"];
+  P5 -> P6 [label="deployment script"];
+
+  D5 -> P6 [label="pending\nmigrations"];
+  E1d -> P6 [label="run or cancel"];
+  P6 -> E1d [label="execution\nmessages"];
+  P6 -> E3b [label="script batches,\nmigration history\nrecords"];
+  E3b -> P6 [label="server messages,\napplied migrations"];
+}

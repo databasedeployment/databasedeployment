@@ -611,3 +611,27 @@ into one logical model.
 | AI provider | JSON prompts with structured output | Parsable answers | Metadata only, never row data (FR-51) |
 
 Versioned formats let the CLI, the web interface and later releases read the same files.
+
+### 5.3 Data Flow Diagrams
+
+Rectangles are external entities (E), rounded boxes are processes and open-ended boxes are data stores (D).
+An asterisk marks a repeated entity or store. Names are the same on all levels.
+
+#### 5.3.1 Level 0
+
+![DFD Level 0](images/requirements-analysis/dfd-level0.png)
+
+SchemaDiff is process 0. The user (E1) sends connection details, options, selections and commands and gets
+results, scripts and reports. The CLI user or pipeline (E2) sends a job selection and gets results, an
+exit code and reports. SQL Server (E3) answers catalog queries, runs batches and keeps the migration history. The
+AI provider (E4) turns a metadata prompt into a structured answer.
+
+#### 5.3.2 Level 1
+
+![DFD Level 1](images/requirements-analysis/dfd-level1.png)
+
+1.0 tests connections and keeps D1 Recent connections. 2.0 reads the catalog, exports or imports D3 Snapshot files
+and passes both snapshots to 3.0, which stores the result in D4 Comparison sessions. 4.0 classifies table changes
+from D4. 5.0 builds the script from D4, the risk findings and the user's selection, and writes migration pairs to
+D5. 6.0 runs scripts and pending migrations on E3. 7.0 reads jobs from D2 Job configuration, which the user edits
+outside the tool, and drives 2.0 and 3.0. 8.0 produces reports and AI explanations. Every Level 0 flow appears here.
