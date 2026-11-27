@@ -1,0 +1,26 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { <b>Generated script | <color:white>xx | {/ <b>source → target | target → source } | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [ ✕ ] }
+  ==
+  { [X] Safe mode (block on possible data loss) | <color:white>xx | [ ] Rollback script | <color:white>xx | 6 objects written (6 of 7 selected) · 1 step gated }
+  ==
+  {
+    <color:#888>1</color>  | <color:#2E7D32>-- SchemaDiff deployment script: DEVSQL01.Payments → TESTSQL01.Payments
+    <color:#888>2</color>  | <color:#2E7D32>-- Order: types, tables, modules, security, permissions, settings
+    <color:#888>3</color>  | <color:#B00020>-- EXCLUDED (data loss, safe mode): ALTER COLUMN dbo.Transactions.Amount decimal(12,2)
+    <color:#888>4</color>  | <color:#B00020>-- WARNING: reference cycle kept in input order: dbo.vw_A, dbo.vw_B
+    <color:#888>5</color>  | <b>SET XACT_ABORT ON;
+    <color:#888>6</color>  | <b>BEGIN TRANSACTION;
+    <color:#888>7</color>  | GO
+    <color:#888>8</color>  | CREATE TABLE [dbo].[PaymentAudit] ([Id] int IDENTITY(1,1) NOT NULL, ...
+    <color:#888>…</color>  | …
+    <color:#888>41</color> | <b>ALTER</b> PROCEDURE [dbo].[usp_PostPayment] @From date AS ...
+    <color:#888>…</color>  | …
+    <color:#888>88</color> | <b>COMMIT TRANSACTION;
+  }
+  ==
+  { [<color:#B00020><b>Run on database] | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [Save as migration…] | [Copy] | [<b>Download .sql] }
+}
+@endsalt

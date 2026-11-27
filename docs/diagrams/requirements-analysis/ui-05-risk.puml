@@ -1,0 +1,25 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { ^All types ^ | "search…        " | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | {/ Differences | <b>Deployment risk (1) | Triggers (1) } }
+  ==
+  <b>4</b> tables have structural changes.
+  <b>1</b> is <b>full</b> in target → will stop during deployment (1 with data-loss risk).
+  <b>1</b> is risky but empty in target → applies cleanly.
+  <b>1</b> depends on existing data → check data before deployment.
+  <b>1</b> is low risk → applied in place.
+  ..
+  { [<b>all 4] | [will block 1] | [data loss 1] | [check data 1] | [unknown 0] | [apply cleanly 2] }
+  ==
+  {#
+    <b>Status | <b>Table | <b>Target rows | <b>Finding
+    <color:#B00020><b>DATA LOSS</b></color> | dbo.Transactions | 42,118,903 | Amount: decimal(18,2) → decimal(12,2) (reduced precision, rounding or overflow)
+    <color:#9A6700><b>CHECK DATA</b></color> | dbo.Customers | 815,220 | Email becomes NOT NULL: fails if existing rows contain NULL (conditional)
+    <color:#1E7B34>empty table</color> | dbo.PaymentStaging | 0 | Drop column LegacyRef: no rows, applies cleanly
+    in place | dbo.Merchants | 12,904 | Name: nvarchar(100) → nvarchar(200) (widening)
+  }
+  ..
+  <i>Unknown row count (no VIEW DATABASE STATE) is shown as RISKY and treated as filled.
+}
+@endsalt

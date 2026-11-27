@@ -542,3 +542,34 @@ While a comparison runs, a card shows the phase, query and module counters, perc
 The upper pane groups differences by Change, Add, Delete and Indeterminate. Checkboxes choose what Generate Script
 includes, sub-change rows such as Alter Column come from the change tree, a warning sign links to UI-05 and the
 status line reports rename candidates. The lower pane shows both definitions side by side with difference arrows.
+
+### 4.5 UI-05 Deployment risk view
+
+![UI-05 Deployment risk view](images/requirements-analysis/ui-05-risk.png)
+
+A tab next to Differences. A summary counts tables by outcome and chips filter them. Each row shows status,
+table, target row count and finding. Data dependent blocks are marked conditional,
+and an unknown row count is shown as risky (FR-26). The Triggers tab lists trigger state differences (FR-28).
+
+### 4.6 UI-06 Generated script
+
+![UI-06 Generated script](images/requirements-analysis/ui-06-script.png)
+
+Opened with Generate Script. Tabs switch direction (FR-24). Safe mode is on by default, and the header lists
+excluded data loss steps and cycle warnings. The rollback check box adds the inverse script. Users can copy,
+download, save as migration (FR-29) or run it after a confirmation.
+
+### 4.7 UI-07 Execution messages
+
+![UI-07 Execution messages](images/requirements-analysis/ui-07-execution.png)
+
+After Run on database, Messages streams SSMS style output and Results shows grids. Stop is visible while batches
+run (FR-35). The example shows a failed batch with number, level, state and line, then the rollback notice.
+
+### 4.8 UI-08 Comparison options and language
+
+![UI-08 Comparison options and language](images/requirements-analysis/ui-08-settings.png)
+
+Opened with Options. The grouped check boxes set normalization and comparison options (FR-11, FR-13) and the
+script behavior. Here the user also ignores column order and collation (UC-03). OK saves the options for the next
+comparisons and the language choice switches every text (FR-46).

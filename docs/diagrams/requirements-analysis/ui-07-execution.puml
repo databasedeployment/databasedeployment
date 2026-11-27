@@ -1,0 +1,25 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { <b>Generated script: run on TESTSQL01.Payments | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [ ✕ ] }
+  ==
+  { [‹ Script] | {/ Results | <b>Messages } | <color:white>xxxxxxxxxxxxxxxxxx | <color:#B00020><b>✗ Failed: rolled back (batch 4 / 6)</b></color> }
+  ==
+  {
+    Connecting…
+    Started executing batch 1 / 6 on TESTSQL01.Payments
+    Creating table [dbo].[PaymentAudit]
+    (0 rows affected)
+    Altering procedure [dbo].[usp_PostPayment]
+    (1 row affected)
+    <color:#B00020>Msg 15151, Level 16, State 1, Line 214
+    <color:#B00020>Cannot find the user 'report_role', because it does not exist or you do not have permission.
+    <color:#B00020>The operation failed. The open transaction was rolled back.
+    ..
+    Completion time: 2026-11-26T14:32:08.4410000+03:00
+  }
+  ==
+  { [<color:#B00020><b>Run on database] | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [Copy] | [Download .sql] }
+}
+@endsalt
