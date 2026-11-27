@@ -573,3 +573,41 @@ run (FR-35). The example shows a failed batch with number, level, state and line
 Opened with Options. The grouped check boxes set normalization and comparison options (FR-11, FR-13) and the
 script behavior. Here the user also ignores column order and collation (UC-03). OK saves the options for the next
 comparisons and the language choice switches every text (FR-46).
+
+<!-- pagebreak -->
+
+## 5. Flow Diagrams
+
+### 5.1 General Data Model
+
+SchemaDiff has no central database. The ER diagram joins its files, in-memory data and the target history table
+into one logical model.
+
+![ER diagram of the SchemaDiff data model](images/requirements-analysis/er-data-model.png)
+
+- **CONNECTION_PROFILE** (recent.json, at most 20) stores the fields of FR-01. `protected_password` is a DPAPI
+  blob, empty unless requested (FR-05).
+- **JOB_CONFIGURATION** and **JOB_DEFINITION** (jobs.json) hold defaults and one or more uniquely named jobs (FR-36).
+- **DATABASE_SNAPSHOT** is one extracted schema with options, failed queries and warnings, read through zero or
+  one profile (CLI jobs use connection strings). **OBJECT_SNAPSHOT** is keyed by snapshot, schema, name and kind,
+  with hash, canonical text, row count, trigger state and the incomparable flag (FR-08). It owns zero or more
+  **OBJECT_PART** rows (sub-part hashes, FR-12), **COLUMN_INFO** rows for tables and **OBJECT_REFERENCE** rows
+  (the dependency graph).
+- **COMPARE_RESULT** references exactly one source and one target snapshot and optionally the job that produced
+  it. It lists zero or more **OBJECT_DIFF** rows, and each table diff has zero or more **RISK_FINDING** rows with
+  risk level, row count and the conditional flag.
+- **MIGRATION_FILE** is a saved `V###` pair, optionally from a result. **`__SchemaDiffMigrations`** records each
+  applied version once. Its checksum must equal the file checksum, or apply stops (UC-15).
+
+### 5.2 Important Data Considerations
+
+| Interface or data exchange | Format or mechanism | Reason for choice | Validation or compatibility constraints |
+|--------|------------|----------|------------|
+| Browser and local backend | JSON over HTTP on 127.0.0.1, progress and execution messages as Server-Sent Events | One-way streaming without WebSocket setup | Loopback binding (NFR-03), no password in any response |
+| Tab close | `navigator.sendBeacon` dispose call | Works while the page unloads | Unknown session IDs are ignored (FR-47) |
+| jobs.json, recent.json | UTF-8 JSON | Easy to edit and review | Comments and trailing commas allowed, job names unique, passwords only as DPAPI blobs |
+| Snapshot file | Compressed JSON with a version header | Small files that can be shared | Unsupported versions refused (UC-17) |
+| Reports | Standalone HTML and JSON | HTML for people, JSON for tools | HTML works offline, counts match JSON (FR-43) |
+| AI provider | JSON prompts with structured output | Parsable answers | Metadata only, never row data (FR-51) |
+
+Versioned formats let the CLI, the web interface and later releases read the same files.
