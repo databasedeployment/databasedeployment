@@ -12,6 +12,13 @@ public sealed record TableScriptOptions
     /// </summary>
     public bool IncludeDrops { get; init; } = true;
 
+    /// <summary>
+    /// Check new CHECK and FOREIGN KEY constraints against the existing rows (WITH CHECK). When off,
+    /// WITH NOCHECK is written: the constraint can be added to a table whose data breaks it, but it
+    /// stays not trusted. SSDT calls this "script validation for new constraints".
+    /// </summary>
+    public bool ValidateNewConstraints { get; init; } = true;
+
     public static readonly TableScriptOptions Default = new();
 }
 
@@ -36,13 +43,18 @@ public sealed record TableScriptResult(
 /// <summary>
 /// Produces the deployment script for table differences. New tables are created from their
 /// display script in foreign key order, so a referenced table always exists before the table
-/// that points at it. Changed tables get column level ADD, ALTER and DROP COLUMN statements.
+/// that points at it. Changed tables get column level ADD, ALTER and DROP COLUMN statements and
+/// the index, key, CHECK, DEFAULT and foreign key changes around them.
 /// Removed tables are dropped in the reverse order of the target, so the owner of a foreign key
 /// goes before the table it references.
 ///
 /// Steps that can lose data (dropping a column or a table, narrowing a type) or fail on a table
 /// with rows (a NOT NULL column without a default) are written and also reported in
 /// <see cref="TableScriptResult.DataLossActions"/>, so nothing risky goes through unnoticed.
+///
+/// Foreign keys are collected for the whole script: every foreign key drop runs first and every
+/// add runs last. A new foreign key therefore never waits for a table that is created or changed
+/// later in the same script.
 ///
 /// Out of scope, reported as skipped: a change of column order (it needs a table rebuild with a
 /// data copy), IDENTITY or computed column changes, and switching a table to system versioning.
@@ -83,6 +95,8 @@ public static class TableScriptGenerator
             }
         }
 
+        var fkDrops = new List<string>();
+        var fkAdds = new List<string>();
         var sb = new StringBuilder(8192);
 
         var orderedCreates = DependencyOrder.Order(creates, result.Source.References, comparer, out var hadCycle);
@@ -91,7 +105,7 @@ public static class TableScriptGenerator
 
         foreach (var diff in changes.OrderBy(d => d.Key.Schema, StringComparer.OrdinalIgnoreCase)
                                     .ThenBy(d => d.Key.Name, StringComparer.OrdinalIgnoreCase))
-            EmitAlter(sb, diff, result, included, skipped, gated);
+            EmitAlter(sb, diff, result, options, included, skipped, gated, fkDrops, fkAdds);
 
         // Removed tables exist on the target, so the target's reference graph decides the order.
         var orderedDrops = DependencyOrder.Order(drops, result.Target.References, comparer, out var dropCycle);
@@ -100,7 +114,20 @@ public static class TableScriptGenerator
         foreach (var key in orderedDrops)
             EmitDrop(sb, key, result, options, included, skipped, gated);
 
-        return new TableScriptResult(sb.ToString(), included, skipped, gated, hadCycle);
+        var script = new StringBuilder(sb.Length + 1024);
+        AppendBatch(script, fkDrops);   // first, so no foreign key blocks a column or index change
+        script.Append(sb);
+        AppendBatch(script, fkAdds);    // last, when every referenced table and key exists
+
+        return new TableScriptResult(script.ToString(), included, skipped, gated, hadCycle);
+    }
+
+    private static void AppendBatch(StringBuilder sb, List<string> statements)
+    {
+        if (statements.Count == 0) return;
+        foreach (var statement in statements) sb.AppendLine(statement);
+        sb.AppendLine("GO");
+        sb.AppendLine();
     }
 
     // CREATE
@@ -129,8 +156,9 @@ public static class TableScriptGenerator
     // ALTER (column level)
 
     private static void EmitAlter(
-        StringBuilder sb, ObjectDiff diff, CompareResult result,
-        List<ObjectKey> included, List<SkippedObject> skipped, List<GatedAction> gated)
+        StringBuilder sb, ObjectDiff diff, CompareResult result, TableScriptOptions options,
+        List<ObjectKey> included, List<SkippedObject> skipped, List<GatedAction> gated,
+        List<string> fkDrops, List<string> fkAdds)
     {
         var key = diff.Key;
         var source = result.Source.Objects[key];
@@ -228,6 +256,15 @@ public static class TableScriptGenerator
 
         AppendColumnAttributeDiff(qualified, source.Columns, targetByName, retyped, alters, localSkips);
 
+        // Index and constraint drops run before the column changes, creates after them.
+        var pre = new List<string>();
+        var post = new List<string>();
+        var foreignKeyStatements = fkDrops.Count + fkAdds.Count;
+        AppendIndexConstraintDiff(qualified, source, target, pre, post, fkDrops, fkAdds,
+            options.ValidateNewConstraints, retyped);
+        AppendDefaultDiff(qualified, sourceByName, targetByName, pre, post);
+        var hasForeignKeyChanges = fkDrops.Count + fkAdds.Count > foreignKeyStatements;
+
         // System versioning is turned off first, because a versioned table limits other schema changes.
         var versioning = new List<string>();
         AppendTemporalDiff(key, qualified, source, target, versioning, skipped);
@@ -235,8 +272,17 @@ public static class TableScriptGenerator
         foreach (var reason in localSkips)
             skipped.Add(new SkippedObject(key, reason));
 
-        // Order: rename, versioning off, DROP COLUMN, ALTER COLUMN and attributes, ADD COLUMN.
-        var ordered = renames.Concat(versioning).Concat(dropColumns).Concat(alters).Concat(adds).ToList();
+        // Order: rename, versioning off, index and constraint drops, DROP COLUMN,
+        // ALTER COLUMN and attributes, ADD COLUMN, index and constraint creates.
+        var ordered = renames.Concat(versioning).Concat(pre)
+            .Concat(dropColumns).Concat(alters).Concat(adds).Concat(post).ToList();
+
+        if (ordered.Count == 0 && hasForeignKeyChanges)
+        {
+            // Only foreign keys changed. Their statements are in the script wide sections.
+            included.Add(key);
+            return;
+        }
 
         if (ordered.Count == 0)
         {
@@ -247,7 +293,7 @@ public static class TableScriptGenerator
                         "only the column order differs. SQL Server cannot reorder columns with ALTER, the table " +
                         "has to be recreated with a data copy, or turn on IgnoreColumnOrder when the order does not matter")
                     : new SkippedObject(key,
-                        $"no column level change (changed parts: {string.Join(", ", diff.ChangedParts)}), review it by hand"));
+                        $"no scriptable change (changed parts: {string.Join(", ", diff.ChangedParts)}), review it by hand"));
             }
             return;
         }
@@ -376,6 +422,259 @@ public static class TableScriptGenerator
                 localSkips.Add($"{name} COLUMN_SET changes, which ALTER cannot do. The table has to be recreated");
         }
     }
+
+    // Indexes and constraints
+
+    /// <summary>
+    /// Index and constraint differences of a changed table. The same name with a different
+    /// definition means drop and recreate. Drops go into <paramref name="pre"/> and run before the
+    /// column changes, because an index or constraint on a column blocks dropping or altering it.
+    /// Creates go into <paramref name="post"/> and run after them, when new columns exist.
+    /// Foreign keys go into the script wide lists instead, see <see cref="Generate"/>.
+    /// </summary>
+    /// <param name="alteredColumns">Columns that get an ALTER COLUMN. An unchanged index on such a
+    /// column is dropped and created again, because SQL Server refuses the ALTER otherwise (Msg 5074).</param>
+    private static void AppendIndexConstraintDiff(
+        string qualified, ObjectSnapshot source, ObjectSnapshot target,
+        List<string> pre, List<string> post, List<string> fkDrops, List<string> fkAdds,
+        bool validateConstraints, HashSet<string> alteredColumns)
+    {
+        // Records compare list members by reference, so definitions are compared by a structural
+        // signature. Otherwise an identical primary key would look changed and get a needless
+        // DROP and ADD, which fails when a foreign key references it.
+
+        var sourceForeignKeys = ByName(source.ForeignKeyDefinitions, f => f.Name);
+        var targetForeignKeys = ByName(target.ForeignKeyDefinitions, f => f.Name);
+        foreach (var (name, fk) in targetForeignKeys)
+            if (!sourceForeignKeys.TryGetValue(name, out var s) || Sig(s) != Sig(fk))
+                fkDrops.Add($"ALTER TABLE {qualified} DROP CONSTRAINT {Id(name)};");
+        foreach (var (name, fk) in sourceForeignKeys)
+        {
+            if (!targetForeignKeys.TryGetValue(name, out var t) || Sig(t) != Sig(fk))
+            {
+                fkAdds.Add(AddForeignKey(qualified, fk, AddClause(fk.IsDisabled, fk.IsNotTrusted, validateConstraints)));
+                if (fk.IsDisabled) fkAdds.Add(ConstraintState(qualified, name, disabled: true, notTrusted: true));
+            }
+            else if (t.IsDisabled != fk.IsDisabled || t.IsNotTrusted != fk.IsNotTrusted)
+            {
+                // Same definition, only the state differs. Drop and recreate would be needless and risky.
+                fkAdds.Add(ConstraintState(qualified, name, fk.IsDisabled, fk.IsNotTrusted));
+            }
+        }
+
+        var sourceChecks = ByName(source.CheckDefinitions, c => c.Name);
+        var targetChecks = ByName(target.CheckDefinitions, c => c.Name);
+        foreach (var (name, check) in targetChecks)
+            if (!sourceChecks.TryGetValue(name, out var s) || Sig(s) != Sig(check))
+                pre.Add($"ALTER TABLE {qualified} DROP CONSTRAINT {Id(name)};");
+        var checkAdds = new List<string>();
+        foreach (var (name, check) in sourceChecks)
+        {
+            if (!targetChecks.TryGetValue(name, out var t) || Sig(t) != Sig(check))
+            {
+                checkAdds.Add($"ALTER TABLE {qualified} {AddClause(check.IsDisabled, check.IsNotTrusted, validateConstraints)} " +
+                              $"ADD CONSTRAINT {Id(check.Name)} CHECK " +
+                              $"{(check.NotForReplication ? "NOT FOR REPLICATION " : string.Empty)}{check.Definition};");
+                if (check.IsDisabled) checkAdds.Add(ConstraintState(qualified, name, disabled: true, notTrusted: true));
+            }
+            else if (t.IsDisabled != check.IsDisabled || t.IsNotTrusted != check.IsNotTrusted)
+            {
+                checkAdds.Add(ConstraintState(qualified, name, check.IsDisabled, check.IsNotTrusted));
+            }
+        }
+
+        // Indexes, including the ones behind PRIMARY KEY and UNIQUE constraints.
+        var sourceIndexes = ByName(source.IndexDefinitions, i => i.Name);
+        var targetIndexes = ByName(target.IndexDefinitions, i => i.Name);
+        foreach (var (name, index) in targetIndexes)
+            if (!sourceIndexes.TryGetValue(name, out var s) || Sig(s) != Sig(index))
+                pre.Add(DropIndex(qualified, index));
+        var indexAdds = new List<string>();
+        var recreated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, index) in sourceIndexes)
+            if (!targetIndexes.TryGetValue(name, out var t) || Sig(t) != Sig(index))
+            {
+                indexAdds.Add(CreateIndex(qualified, index));
+                recreated.Add(name);
+            }
+
+        // An unchanged index on an altered column blocks the ALTER (Msg 5074 "index is dependent on
+        // column"). It is dropped before the ALTER and created again with the same definition.
+        if (alteredColumns.Count > 0)
+            foreach (var (name, index) in sourceIndexes)
+            {
+                if (recreated.Contains(name)) continue;
+                var touches = index.KeyColumns.Any(k => alteredColumns.Contains(k.Column))
+                           || index.IncludedColumns.Any(alteredColumns.Contains);
+                if (!touches) continue;
+                pre.Add(DropIndex(qualified, index));
+                indexAdds.Add(CreateIndex(qualified, index));
+            }
+
+        // Inside the table, keys and indexes come before checks. Foreign keys come at the very end.
+        post.AddRange(indexAdds);
+        post.AddRange(checkAdds);
+    }
+
+    /// <summary>
+    /// DEFAULT changes on columns that exist on both sides: the old default is dropped and the new
+    /// one added. A new column gets its default inline in ADD COLUMN, so it is not handled here.
+    /// </summary>
+    private static void AppendDefaultDiff(
+        string qualified,
+        Dictionary<string, ColumnInfo> sourceByName,
+        Dictionary<string, ColumnInfo> targetByName,
+        List<string> pre, List<string> post)
+    {
+        foreach (var (name, source) in sourceByName)
+        {
+            if (!targetByName.TryGetValue(name, out var target)) continue;
+            if (string.Equals(source.DefaultDefinition, target.DefaultDefinition, StringComparison.Ordinal)) continue;
+
+            // The old default is dropped by its real name, even a system generated one, because
+            // the name comes from the target catalog.
+            if (target.DefaultDefinition is not null && target.DefaultName is not null)
+                pre.Add($"ALTER TABLE {qualified} DROP CONSTRAINT {Id(target.DefaultName)};");
+
+            // A user chosen name is kept. A system generated name is left out, so the target
+            // generates its own instead of copying one that belongs to the source.
+            if (source.DefaultDefinition is not null)
+            {
+                var named = source.DefaultName is not null && !source.DefaultIsSystemNamed;
+                var namePart = named ? $"CONSTRAINT {Id(source.DefaultName!)} " : string.Empty;
+                post.Add($"ALTER TABLE {qualified} ADD {namePart}DEFAULT {source.DefaultDefinition} FOR {Id(name)};");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether a new constraint checks the existing rows. A constraint that is disabled or not
+    /// trusted in the source may well be violated by the data, and adding it WITH CHECK would make
+    /// the deployment fail. So the source state wins over the ValidateNewConstraints option.
+    /// </summary>
+    private static string AddClause(bool disabled, bool notTrusted, bool validateConstraints) =>
+        disabled || notTrusted || !validateConstraints ? "WITH NOCHECK" : "WITH CHECK";
+
+    /// <summary>
+    /// Brings a constraint to the state it has in the source. The three states are written differently:
+    /// disabled is NOCHECK CONSTRAINT (which also makes it untrusted), enabled but untrusted is
+    /// CHECK CONSTRAINT (enables without checking rows), and enabled and trusted is
+    /// WITH CHECK CHECK CONSTRAINT (checks the existing rows).
+    /// </summary>
+    private static string ConstraintState(string qualified, string name, bool disabled, bool notTrusted) =>
+        disabled ? $"ALTER TABLE {qualified} NOCHECK CONSTRAINT {Id(name)};"
+        : notTrusted ? $"ALTER TABLE {qualified} CHECK CONSTRAINT {Id(name)};"
+        : $"ALTER TABLE {qualified} WITH CHECK CHECK CONSTRAINT {Id(name)};";
+
+    private static string DropIndex(string qualified, IndexDefinition index) => index.IsConstraint
+        ? $"ALTER TABLE {qualified} DROP CONSTRAINT {Id(index.Name)};"
+        : $"DROP INDEX {Id(index.Name)} ON {qualified};";
+
+    private static string CreateIndex(string qualified, IndexDefinition index)
+    {
+        if (index.IsConstraint)
+        {
+            var kind = index.IsPrimaryKey ? "PRIMARY KEY" : "UNIQUE";
+            var constraint = new StringBuilder(
+                $"ALTER TABLE {qualified} ADD CONSTRAINT {Id(index.Name)} {kind} {Clustered(index.TypeDesc)} ({KeyList(index, ordered: true)})");
+            constraint.Append(WithOptions(index));
+            // Placement such as ON [scheme]([column]) for a partitioned clustered key. Without it
+            // the key would be created on the default filegroup and not partitioned.
+            if (!string.IsNullOrEmpty(index.Placement)) constraint.Append(" ON ").Append(index.Placement);
+            return constraint.Append(';').ToString();
+        }
+
+        var columnstore = index.TypeDesc.Contains("COLUMNSTORE", StringComparison.OrdinalIgnoreCase);
+        // A clustered columnstore index covers the whole table, so it has no column list, INCLUDE
+        // or WHERE. A nonclustered columnstore index lists its columns without ASC or DESC.
+        var clusteredColumnstore = columnstore && !index.TypeDesc.Contains("NONCLUSTERED", StringComparison.OrdinalIgnoreCase);
+
+        var sb = new StringBuilder("CREATE ");
+        if (index.IsUnique && !columnstore) sb.Append("UNIQUE ");
+        sb.Append(index.TypeDesc).Append(" INDEX ").Append(Id(index.Name)).Append(" ON ").Append(qualified);
+
+        if (!clusteredColumnstore)
+        {
+            sb.Append(" (").Append(KeyList(index, ordered: !columnstore)).Append(')');
+            if (!columnstore && index.IncludedColumns.Count > 0)
+                sb.Append(" INCLUDE (").Append(string.Join(", ", index.IncludedColumns.Select(Id))).Append(')');
+            if (index.FilterDefinition is not null)
+                sb.Append(" WHERE ").Append(index.FilterDefinition);
+        }
+
+        sb.Append(WithOptions(index));
+        if (!string.IsNullOrEmpty(index.Placement)) sb.Append(" ON ").Append(index.Placement);
+        return sb.Append(';').ToString();
+    }
+
+    /// <summary>
+    /// The single WITH (...) list of an index. Only values that differ from the default are written:
+    /// row and page locks default to ON, compression to NONE.
+    /// </summary>
+    private static string WithOptions(IndexDefinition index)
+    {
+        var columnstore = index.TypeDesc.Contains("COLUMNSTORE", StringComparison.OrdinalIgnoreCase);
+        var options = new List<string>(4);
+        if (index.ExplicitCompression is { } compression) options.Add($"DATA_COMPRESSION = {compression}");
+        // Lock and statistics options are not valid on columnstore indexes.
+        if (!columnstore)
+        {
+            if (!index.AllowRowLocks) options.Add("ALLOW_ROW_LOCKS = OFF");
+            if (!index.AllowPageLocks) options.Add("ALLOW_PAGE_LOCKS = OFF");
+            if (index.StatisticsNoRecompute) options.Add("STATISTICS_NORECOMPUTE = ON");
+            // SQL Server 2019 and later. Only written when on, so older targets do not fail.
+            if (index.OptimizeForSequentialKey) options.Add("OPTIMIZE_FOR_SEQUENTIAL_KEY = ON");
+        }
+        return options.Count == 0 ? string.Empty : $" WITH ({string.Join(", ", options)})";
+    }
+
+    private static string AddForeignKey(string qualified, ForeignKeyDefinition fk, string checkClause)
+    {
+        var parent = string.Join(", ", fk.Columns.Select(c => Id(c.Parent)));
+        var referenced = string.Join(", ", fk.Columns.Select(c => Id(c.Referenced)));
+        var sb = new StringBuilder(
+            $"ALTER TABLE {qualified} {checkClause} ADD CONSTRAINT {Id(fk.Name)} FOREIGN KEY ({parent}) " +
+            $"REFERENCES {Id(fk.ReferencedSchema)}.{Id(fk.ReferencedName)} ({referenced})");
+        if (fk.DeleteAction != 0) sb.Append(" ON DELETE ").Append(ReferentialAction(fk.DeleteAction));
+        if (fk.UpdateAction != 0) sb.Append(" ON UPDATE ").Append(ReferentialAction(fk.UpdateAction));
+        if (fk.NotForReplication) sb.Append(" NOT FOR REPLICATION");
+        return sb.Append(';').ToString();
+    }
+
+    private static string KeyList(IndexDefinition index, bool ordered) => string.Join(", ",
+        index.KeyColumns.Select(k => ordered ? $"{Id(k.Column)} {(k.Descending ? "DESC" : "ASC")}" : Id(k.Column)));
+
+    private static string Clustered(string typeDesc) =>
+        typeDesc.Contains("CLUSTERED", StringComparison.OrdinalIgnoreCase)
+        && !typeDesc.StartsWith("NON", StringComparison.OrdinalIgnoreCase)
+            ? "CLUSTERED" : "NONCLUSTERED";
+
+    private static string ReferentialAction(byte action) => action switch
+    {
+        1 => "CASCADE",
+        2 => "SET NULL",
+        3 => "SET DEFAULT",
+        _ => "NO ACTION",
+    };
+
+    private static Dictionary<string, T> ByName<T>(IReadOnlyList<T>? items, Func<T, string> name) =>
+        (items ?? []).ToDictionary(name, StringComparer.OrdinalIgnoreCase);
+
+    // Structural signatures, so list members are compared by value.
+
+    private static string Sig(IndexDefinition i) =>
+        $"pk={i.IsPrimaryKey}|uq={i.IsUniqueConstraint}|u={i.IsUnique}|t={i.TypeDesc}|" +
+        $"keys={string.Join(",", i.KeyColumns.Select(k => $"{k.Column}:{(k.Descending ? "D" : "A")}"))}|" +
+        $"inc={string.Join(",", i.IncludedColumns)}|f={i.FilterDefinition ?? ""}|" +
+        $"comp={i.ExplicitCompression ?? ""}|rowLocks={i.AllowRowLocks}|pageLocks={i.AllowPageLocks}|" +
+        $"seqKey={i.OptimizeForSequentialKey}|statsNoRecompute={i.StatisticsNoRecompute}|place={i.Placement ?? ""}";
+
+    private static string Sig(CheckDefinition c) => $"def={c.Definition}|nfr={c.NotForReplication}";
+
+    private static string Sig(ForeignKeyDefinition f) =>
+        $"ref={f.ReferencedSchema}.{f.ReferencedName}|" +
+        $"cols={string.Join(",", f.Columns.Select(c => $"{c.Parent}>{c.Referenced}"))}|" +
+        $"del={f.DeleteAction}|upd={f.UpdateAction}|nfr={f.NotForReplication}";
 
     // Risk classification
 
