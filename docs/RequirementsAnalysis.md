@@ -635,3 +635,14 @@ and passes both snapshots to 3.0, which stores the result in D4 Comparison sessi
 from D4. 5.0 builds the script from D4, the risk findings and the user's selection, and writes migration pairs to
 D5. 6.0 runs scripts and pending migrations on E3. 7.0 reads jobs from D2 Job configuration, which the user edits
 outside the tool, and drives 2.0 and 3.0. 8.0 produces reports and AI explanations. Every Level 0 flow appears here.
+
+#### 5.3.3 Level 2: Process 5.0 Generate deployment script
+
+![DFD Level 2 for process 5.0](images/requirements-analysis/dfd-level2.png)
+
+5.1 resolves the user's selection and direction against the comparison result. 5.2 orders the selected changes
+with the reference graph and reports cycles. 5.3 writes CREATE and ALTER statements from the snapshot sub-parts.
+5.4 removes data loss steps in safe mode using the findings of 4.0. 5.5 writes inverse statements from the target
+definitions. 5.6 assembles the transaction scripts. Parent flows are preserved: the user input is split into
+selection and safe mode, the D4 flow into its four parts, and the three outputs (scripts to E1, script to 6.0,
+migration pair to D5) leave 5.6 unchanged.
