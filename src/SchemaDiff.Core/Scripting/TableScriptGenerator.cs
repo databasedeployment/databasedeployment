@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using SchemaDiff.Core.Model;
+using static SchemaDiff.Core.Scripting.SqlName;
 
 namespace SchemaDiff.Core.Scripting;
 
@@ -44,7 +45,7 @@ public sealed record TableScriptResult(
 /// Produces the deployment script for table differences. New tables are created from their
 /// display script in foreign key order, so a referenced table always exists before the table
 /// that points at it. Changed tables get column level ADD, ALTER and DROP COLUMN statements and
-/// the index, key, CHECK, DEFAULT and foreign key changes around them.
+/// the index, key, CHECK, DEFAULT, foreign key and statistics changes around them.
 /// Removed tables are dropped in the reverse order of the target, so the owner of a foreign key
 /// goes before the table it references.
 ///
@@ -262,6 +263,7 @@ public static class TableScriptGenerator
         var foreignKeyStatements = fkDrops.Count + fkAdds.Count;
         AppendIndexConstraintDiff(qualified, source, target, pre, post, fkDrops, fkAdds,
             options.ValidateNewConstraints, retyped);
+        AppendStatisticsDiff(qualified, source, target, pre, post);
         AppendDefaultDiff(qualified, sourceByName, targetByName, pre, post);
         var hasForeignKeyChanges = fkDrops.Count + fkAdds.Count > foreignKeyStatements;
 
@@ -517,6 +519,28 @@ public static class TableScriptGenerator
     }
 
     /// <summary>
+    /// User statistics. ALTER STATISTICS can only switch NORECOMPUTE, a change of columns or filter
+    /// needs a drop and create. Every change takes that one path to keep it simple. Like indexes,
+    /// drops run before the column changes (a statistic on a column blocks dropping it) and
+    /// creates after them (a new column exists by then).
+    /// </summary>
+    private static void AppendStatisticsDiff(
+        string qualified, ObjectSnapshot source, ObjectSnapshot target,
+        List<string> pre, List<string> post)
+    {
+        var sourceStatistics = ByName(source.StatisticsDefinitions, s => s.Name);
+        var targetStatistics = ByName(target.StatisticsDefinitions, s => s.Name);
+
+        foreach (var (name, statistic) in targetStatistics)
+            if (!sourceStatistics.TryGetValue(name, out var s) || Sig(s) != Sig(statistic))
+                pre.Add(StatisticsScript.Drop(qualified, name));
+
+        foreach (var (name, statistic) in sourceStatistics)
+            if (!targetStatistics.TryGetValue(name, out var t) || Sig(t) != Sig(statistic))
+                post.Add(StatisticsScript.Create(qualified, statistic));
+    }
+
+    /// <summary>
     /// DEFAULT changes on columns that exist on both sides: the old default is dropped and the new
     /// one added. A new column gets its default inline in ADD COLUMN, so it is not handled here.
     /// </summary>
@@ -669,6 +693,10 @@ public static class TableScriptGenerator
         $"comp={i.ExplicitCompression ?? ""}|rowLocks={i.AllowRowLocks}|pageLocks={i.AllowPageLocks}|" +
         $"seqKey={i.OptimizeForSequentialKey}|statsNoRecompute={i.StatisticsNoRecompute}|place={i.Placement ?? ""}";
 
+    private static string Sig(StatisticsDefinition s) =>
+        $"cols={string.Join(",", s.Columns)}|f={s.FilterDefinition ?? ""}|" +
+        $"norecompute={s.NoRecompute}|incremental={s.IsIncremental}";
+
     private static string Sig(CheckDefinition c) => $"def={c.Definition}|nfr={c.NotForReplication}";
 
     private static string Sig(ForeignKeyDefinition f) =>
@@ -797,14 +825,6 @@ public static class TableScriptGenerator
     }
 
     // Helpers
-
-    /// <summary>Bracketed identifier. A closing bracket inside the name is doubled.</summary>
-    private static string Id(string name) => "[" + name.Replace("]", "]]") + "]";
-
-    private static string Qualified(ObjectKey key) => $"{Id(key.Schema)}.{Id(key.Name)}";
-
-    /// <summary>Text for an N'...' literal, with single quotes doubled.</summary>
-    private static string Literal(string value) => value.Replace("'", "''");
 
     /// <summary>Name part for the first argument of sp_rename. It sits inside brackets and inside
     /// an N'...' literal, so both closing brackets and quotes are escaped.</summary>
