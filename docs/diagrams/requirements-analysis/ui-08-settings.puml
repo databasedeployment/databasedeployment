@@ -1,0 +1,33 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { <b>Comparison options | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [ ✕ ] }
+  ==
+  {SI
+    <b>Text / normalization
+    [X] Ignore whitespace
+    [X] Ignore comments
+    [ ] Ignore keyword casing
+    [ ] Ignore semicolon between statements
+    [ ] Ignore quoted identifiers
+    <b>Columns and types
+    [X] Ignore column order
+    [X] Ignore column collation
+    [ ] Ignore identity seed     | [ ] Ignore increment
+    <b>Indexes
+    [ ] Ignore fill factor       | [ ] Ignore index padding
+    [ ] Ignore data compression
+    <b>Objects and constraints
+    [X] Ignore system-named constraints
+    [ ] Case-sensitive object names | [ ] Case-sensitive column names
+    <b>Script / deployment
+    [X] Block on possible data loss (safe mode)
+    [X] Start with all changes selected
+  }
+  ==
+  { <b>Language | (X) English | ( ) Türkçe | <color:white>xxxxxxxxxxxxxxxxx | <i>Options are saved for the next comparisons. }
+  ==
+  { [Reset to defaults] | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx | [<b>OK] }
+}
+@endsalt

@@ -1,0 +1,17 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-01\nDatabase Developer" as DEV
+actor "UT-02\nDBA" as DBA
+rectangle "Web interface" {
+  usecase "UC-13 Review differences\nin the web interface" as UC13
+  usecase "Follow live progress" as PRG
+  usecase "Compare definitions side by side" as SBS
+  usecase "Change settings and language" as SET
+}
+DEV --> UC13
+DBA --> UC13
+UC13 ..> PRG : <<include>>
+UC13 ..> SBS : <<include>>
+SET ..> UC13 : <<extend>>
+@enduml

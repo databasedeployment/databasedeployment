@@ -1,0 +1,26 @@
+@startsalt
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+{+
+  { [<b>Source: DEVSQL01.Payments] | [ ⇄ ] | [<b>Target: TESTSQL01.Payments] | <color:white>xxx | [New comparison] | [Compare] | [Generate Script] | [Options] | [TR] }
+  ==
+  DEVSQL01.Payments → TESTSQL01.Payments · 62% · 4s elapsed
+  ==
+  { <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxx | {+
+      <b>Reading schema (querying catalog)…
+      ..
+      ✓ Connecting to databases
+      ▶ Reading schema: queries 38 / 52, modules 1,240 / 3,100
+      ○ Building snapshot
+      ○ Comparing differences
+      ..
+      <color:#1F3A5F>██████████████████████████<color:#C8D3E0>████████████████<color:black> 62%
+      ..
+      { <color:white>xxxxxxxxxxxxxxxxxxxxxxx | [Cancel] }
+    } | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxx }
+  .
+  ==
+  { <b>Object Definitions | <color:white>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }
+  <i>Select a row above.
+}
+@endsalt

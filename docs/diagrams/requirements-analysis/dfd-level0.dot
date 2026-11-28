@@ -1,0 +1,23 @@
+digraph L0 {
+  graph [rankdir=LR, fontname="DejaVu Sans", nodesep=0.6, ranksep=1.6, pad=0.2];
+  node  [fontname="DejaVu Sans", fontsize=11, color="#1F3A5F"];
+  edge  [fontname="DejaVu Sans", fontsize=9, color="#3A4F6B", fontcolor="#222222"];
+
+  E1 [shape=box, label="E1\nUser\n(developer, DBA,\nrelease manager)", width=1.8];
+  E2 [shape=box, label="E2\nCLI user /\nCI/CD pipeline", width=1.8];
+  E3 [shape=box, label="E3\nSQL Server\n(source and target)", width=1.8];
+  E4 [shape=box, label="E4\nAI provider", width=1.8];
+  P0 [shape=box, style="rounded,filled", fillcolor="#EEF3F9", label="0\nSchemaDiff", width=2.2, height=1.4, fontsize=13];
+
+  {rank=same; E1; E2;}
+  {rank=same; E3; E4;}
+
+  E1 -> P0 [label="connection details, comparison options,\nobject selection, safe mode,\nrun or cancel, report and AI requests"];
+  P0 -> E1 [label="server info, database list, progress,\ncomparison result, risk findings,\ndeployment and rollback scripts,\nexecution messages, reports, AI explanations"];
+  E2 -> P0 [label="job selection,\nreport option"];
+  P0 -> E2 [label="job results, exit code,\nHTML and JSON reports"];
+  P0 -> E3 [label="connection test, read-only catalog queries,\nscript batches, migration history records"];
+  E3 -> P0 [label="server info, catalog rows, row counts,\nserver messages, applied migrations"];
+  P0 -> E4 [label="schema metadata prompt"];
+  E4 -> P0 [label="structured answer"];
+}

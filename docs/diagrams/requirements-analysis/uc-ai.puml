@@ -1,0 +1,19 @@
+@startuml
+!include style.iuml
+left to right direction
+actor "UT-04\nRelease Manager" as RM
+actor "UT-02\nDBA" as DBA
+actor "UT-07\nAI provider" as AI
+rectangle "AI assistant" {
+  usecase "UC-14 Get AI explanations" as UC14
+  usecase "Release notes" as RN
+  usecase "Risk explanations" as RE
+  usecase "Script review" as RV
+}
+RM --> UC14
+DBA --> UC14
+RN ..> UC14 : <<extend>>
+RE ..> UC14 : <<extend>>
+RV ..> UC14 : <<extend>>
+UC14 --> AI
+@enduml

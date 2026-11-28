@@ -1,0 +1,159 @@
+@startuml
+skinparam dpi 200
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowColor #3A4F6B
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #1F3A5F
+  HeaderBackgroundColor #EEF3F9
+}
+hide circle
+hide methods
+hide stereotype
+
+entity "CONNECTION_PROFILE\n(recent.json)" as conn {
+  * id : string <<PK>>
+  --
+  server : string
+  database : string
+  authentication : Windows | SqlLogin
+  user_name : string
+  encrypt : bool
+  trust_server_certificate : bool
+  last_used : datetime
+  protected_password : DPAPI blob (nullable)
+}
+
+entity "JOB_CONFIGURATION\n(jobs.json)" as cfg {
+  * file_path : string <<PK>>
+  --
+  default_source : connection string
+  default_target : connection string
+}
+
+entity "JOB_DEFINITION" as job {
+  * name : string <<PK>>
+  --
+  * file_path : string <<FK>>
+  source / target : connection string
+  database : string
+  source_database : string
+  target_database : string
+}
+
+entity "DATABASE_SNAPSHOT" as snap {
+  * snapshot_id : guid <<PK>>
+  --
+  connection_id : string <<FK>> (nullable)
+  server : string
+  database : string
+  format_version : int
+  extracted_at : datetime
+  comparison_options : flags
+  failed_queries : list
+  warnings : list
+}
+
+entity "OBJECT_SNAPSHOT" as obj {
+  * snapshot_id : guid <<PK, FK>>
+  * schema : string <<PK>>
+  * name : string <<PK>>
+  * kind : ObjectKind <<PK>>
+  --
+  hash : XxHash128
+  canonical : text
+  modify_date : datetime
+  incomparable : bool
+  incomparable_reason : string
+  row_count : bigint (nullable)
+  is_disabled : bool (triggers)
+}
+
+entity "OBJECT_PART" as part {
+  * object key <<PK, FK>>
+  * part_name : string <<PK>>
+  --
+  part_hash : XxHash128
+  part_canonical : text
+}
+
+entity "COLUMN_INFO" as col {
+  * object key <<PK, FK>>
+  * column_name : string <<PK>>
+  --
+  type_name : string
+  max_length, precision, scale
+  is_nullable : bool
+  collation : string
+  is_identity : bool
+  default_definition : string
+}
+
+entity "OBJECT_REFERENCE" as ref {
+  * from object key <<PK, FK>>
+  * to object key <<PK, FK>>
+}
+
+entity "COMPARE_RESULT" as res {
+  * result_id : guid <<PK>>
+  --
+  * source_snapshot_id : guid <<FK>>
+  * target_snapshot_id : guid <<FK>>
+  job_name : string <<FK>> (nullable)
+  equal_count : int
+  compare_time : duration
+}
+
+entity "OBJECT_DIFF" as diff {
+  * result_id : guid <<PK, FK>>
+  * object key <<PK>>
+  --
+  diff_kind : Added | Removed | Changed |\n  Equal | Indeterminate
+  changed_parts : list
+}
+
+entity "RISK_FINDING" as risk {
+  * result_id, object key <<PK, FK>>
+  * column_name : string <<PK>>
+  --
+  risk : Safe | InPlace |\n  BlockedIfNotEmpty | DataLoss
+  target_row_count : bigint (nullable)
+  conditional : bool
+  description : string
+}
+
+entity "MIGRATION_FILE\n(V###__description.sql)" as mig {
+  * version : int <<PK>>
+  --
+  result_id : guid <<FK>> (nullable)
+  description : string
+  file_name : string
+  rollback_file_name : string
+  checksum : string
+}
+
+entity "__SchemaDiffMigrations\n(on the target database)" as hist {
+  * version : int <<PK, FK>>
+  --
+  description : string
+  checksum : string
+  applied_at : datetime
+}
+
+cfg ||--|{ job : "defines"
+conn |o--o{ snap : "extracted through"
+snap ||--|{ obj : "contains"
+obj ||--o{ part : "is split into"
+obj ||--o{ col : "has (tables)"
+obj ||--o{ ref : "references"
+snap ||--o{ res : "source of"
+snap ||--o{ res : "target of"
+job |o--o{ res : "produces"
+res ||--o{ diff : "lists"
+diff ||--o{ risk : "is classified by"
+res |o--o{ mig : "is saved as"
+mig ||--o| hist : "is recorded as"
+@enduml
