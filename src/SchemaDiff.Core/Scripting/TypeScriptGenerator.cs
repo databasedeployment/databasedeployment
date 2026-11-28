@@ -12,6 +12,14 @@ public sealed record TypeScriptOptions
     /// </summary>
     public bool IncludeDrops { get; init; }
 
+    /// <summary>
+    /// Rebuild a changed table type: drop the modules that use it, drop and create the type, then
+    /// create the modules again. Off by default, because a procedure that is dropped and cannot be
+    /// created again (its definition is not readable) is a damage that cannot be repaired. Even when
+    /// on, nothing is written unless every dependent module is readable.
+    /// </summary>
+    public bool RecreateChangedTableTypes { get; init; }
+
     public static readonly TypeScriptOptions Default = new();
 }
 
@@ -29,8 +37,10 @@ public sealed record TypeScriptResult(
 /// new type, which has to exist first. Alias types come before table types, since a table type
 /// column can use an alias type.
 ///
-/// A type cannot be altered, so a changed type is reported as skipped with its reason. Removed
-/// types are only dropped with <see cref="TypeScriptOptions.IncludeDrops"/>, behind an existence check.
+/// A type cannot be altered. A changed alias type is reported as skipped with its reason. A changed
+/// table type is either reported as well or, with <see cref="TypeScriptOptions.RecreateChangedTableTypes"/>,
+/// rebuilt together with the modules that use it. Removed types are only dropped with
+/// <see cref="TypeScriptOptions.IncludeDrops"/>, behind an existence check.
 /// </summary>
 public static class TypeScriptGenerator
 {
@@ -54,6 +64,7 @@ public static class TypeScriptGenerator
 
         var creates = new List<ObjectKey>();
         var drops = new List<ObjectKey>();
+        var rebuilds = new List<ObjectKey>();
 
         foreach (var diff in result.Differences)
         {
@@ -75,6 +86,17 @@ public static class TypeScriptGenerator
 
                 case DiffKind.Removed:
                     skipped.Add(new SkippedObject(diff.Key, "drops are turned off, the type stays on the target"));
+                    break;
+
+                case DiffKind.Changed when diff.Key.Kind == ObjectKind.TableType && options.RecreateChangedTableTypes:
+                    rebuilds.Add(diff.Key);
+                    break;
+
+                case DiffKind.Changed when diff.Key.Kind == ObjectKind.TableType:
+                    skipped.Add(new SkippedObject(diff.Key,
+                        "changed, but a table type cannot be altered. Turn on " +
+                        $"{nameof(TypeScriptOptions.RecreateChangedTableTypes)} to drop the modules that use it, " +
+                        "rebuild the type and create the modules again"));
                     break;
 
                 case DiffKind.Changed:
@@ -107,6 +129,13 @@ public static class TypeScriptGenerator
             included.Add(key);
         }
 
+        foreach (var key in rebuilds.OrderBy(k => k.Schema, StringComparer.OrdinalIgnoreCase)
+                                    .ThenBy(k => k.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (RebuildTableType(sb, key, result) is { } reason) skipped.Add(new SkippedObject(key, reason));
+            else included.Add(key);
+        }
+
         // Drops run in reverse: table types before the alias types they may use.
         var orderedDrops = DependencyOrder.Order(drops, result.Target.References, comparer, out _);
         orderedDrops.Reverse();
@@ -121,9 +150,75 @@ public static class TypeScriptGenerator
         return new TypeScriptResult(sb.ToString(), included, skipped);
     }
 
+    /// <summary>
+    /// Rebuilds a changed table type: drop the dependent modules, drop and create the type, then
+    /// create the modules again from their source definition. Every dependent has to be readable,
+    /// otherwise nothing is written.
+    /// </summary>
+    /// <returns>The reason when nothing could be written, otherwise null.</returns>
+    private static string? RebuildTableType(StringBuilder sb, ObjectKey key, CompareResult result)
+    {
+        if (!result.Source.Objects.TryGetValue(key, out var source)
+            || string.IsNullOrWhiteSpace(source.DisplayScript))
+            return "no CREATE text, the snapshot was taken without a display script";
+
+        result.Target.Objects.TryGetValue(key, out var target);
+
+        // Dependents on the target are dropped and dependents in the source are created again,
+        // so every module in either list has to have a readable source definition.
+        var toDrop = target?.DependentModules ?? [];
+        var toCreate = source.DependentModules ?? [];
+
+        foreach (var dependent in toDrop.Concat(toCreate).Distinct())
+        {
+            if (!result.Source.Objects.TryGetValue(dependent, out var module)
+                || string.IsNullOrWhiteSpace(module.DisplayScript) || module.Incomparable)
+            {
+                return $"the dependent module {dependent} cannot be restored because its definition is not " +
+                       "readable. The type was not rebuilt, apply the change by hand";
+            }
+        }
+
+        foreach (var dependent in toDrop)
+        {
+            var name = Qualified(dependent);
+            sb.AppendLine($"IF OBJECT_ID(N'{Literal(name)}') IS NOT NULL");
+            sb.AppendLine($"    DROP {ModuleVerb(dependent.Kind)} {name};");
+        }
+        sb.AppendLine(DropType(key));
+        sb.AppendLine("GO");
+        sb.AppendLine();
+
+        sb.AppendLine(source.DisplayScript!.TrimEnd());
+        sb.AppendLine("GO");
+        sb.AppendLine();
+
+        foreach (var dependent in toCreate)
+        {
+            var module = result.Source.Objects[dependent];
+            // The module keeps the SET options it was created with, otherwise its behavior changes.
+            sb.AppendLine($"SET ANSI_NULLS {(module.UsesAnsiNulls == false ? "OFF" : "ON")};");
+            sb.AppendLine($"SET QUOTED_IDENTIFIER {(module.UsesQuotedIdentifier == false ? "OFF" : "ON")};");
+            sb.AppendLine("GO");
+            sb.AppendLine(module.DisplayScript!.TrimEnd());
+            sb.AppendLine("GO");
+            sb.AppendLine();
+        }
+
+        return null;
+    }
+
     private static string DropType(ObjectKey key)
     {
         var name = Qualified(key);
         return $"IF TYPE_ID(N'{Literal(name)}') IS NOT NULL{Environment.NewLine}    DROP TYPE {name};";
     }
+
+    private static string ModuleVerb(ObjectKind kind) => kind switch
+    {
+        ObjectKind.Procedure => "PROCEDURE",
+        ObjectKind.Trigger => "TRIGGER",
+        ObjectKind.View => "VIEW",
+        _ => "FUNCTION",
+    };
 }
